@@ -98,8 +98,9 @@ python .\scripts\project_agents.py list
 
 `sync` creates eight self-contained project agents under `.codex/agents/`. Models are pinned by profile:
 
-- PM, PL, and TA use `gpt-5.6-sol`.
-- The three developer seats, QA/SDET, and Build/Release use `gpt-5.6-terra`.
+- PM, PL, TA, QA/SDET, and Build/Release use `gpt-5.6-terra`.
+- The three developer seats use `gpt-5.6-luna`.
+- `research-lane` accepts only developer seats, so simple shard reading, extraction, and structured summaries run on Luna.
 
 Resolve one seat with an explicit skill packet:
 

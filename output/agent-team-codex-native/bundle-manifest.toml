@@ -14,6 +14,7 @@ activation_instructions = "config/agent-team/activation-instructions.md"
 recommended_tools = "config/agent-team/recommended-tools.md"
 rtk_policy = "config/agent-team/RTK.md"
 rtk_hook = "scripts/rtk_pre_tool_use.py"
+message_echo_hook = "scripts/message_echo_hook.sh"
 research_ledger = "scripts/agent_team_research.py"
 research_taskflow = "scripts/agent_team_taskflow.py"
 

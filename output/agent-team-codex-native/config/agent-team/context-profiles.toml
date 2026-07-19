@@ -148,7 +148,8 @@ max_artifact_chars = 18000
 max_packet_chars = 48000
 
 [profiles."research-lane"]
-roles = ["ta", "dev_1", "dev_2", "dev_3", "qa_sdet", "build_release"]
+# Simple reading, extraction, and structured-summary lanes run only on developer seats.
+roles = ["dev_1", "dev_2", "dev_3"]
 expansion_level = 1
 max_messages = 6
 max_message_chars = 9000

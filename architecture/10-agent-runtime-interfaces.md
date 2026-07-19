@@ -89,10 +89,12 @@ Canonical sources under `agents/` define:
 
 `scripts/project_agents.py sync` compiles each seat into one self-contained `.codex/agents/<seat_id>.toml` file. Every runtime file contains the required Codex custom-agent fields plus:
 
-- a pinned `gpt-5.6-sol` or `gpt-5.6-terra` model;
+- a pinned `gpt-5.6-terra` or `gpt-5.6-luna` model;
 - reasoning effort;
 - sandbox mode;
 - resolved seat identity, role authority, lifecycle boundary, and message contract.
+
+The current cost profile pins PM, PL, TA, QA/SDET, and Build/Release to Terra, and the three developer seats to Luna. The `research-lane` context profile permits only developer seats, so clear, repeatable reading and structured-summary work remains on Luna while research planning, synthesis, verification, review, and approval use their assigned Terra seats.
 
 ## Model Runner Interface
 

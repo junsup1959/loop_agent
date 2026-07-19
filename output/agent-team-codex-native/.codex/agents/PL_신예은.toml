@@ -1,6 +1,6 @@
 name = "PL_신예은"
 description = "Project-local Project Leader and Technical Lead seat. Use for the bounded organizational responsibilities defined by this seat."
-model = "gpt-5.6-sol"
+model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """

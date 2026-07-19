@@ -13,7 +13,7 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 | `agent_team_dispatcher.py` | UDP wake-up and durable outbox polling |
 | `agent_team_context.py` | Budgeted role-specific Context Compiler and runner-skill injector |
 | `agent_team_message_viewer.py` | Human-only message and Git change viewer |
-| `agent_team_taskflow.py` | Airflow TaskFlow module iteration DAG |
+| `agent_team_taskflow.py` | Airflow TaskFlow module and research iteration DAGs |
 | `agent_team_research.py` | Local research ledger, artifacts, source sharding, claims, conflicts, and reference-only context selection |
 | `serena_project_knowledge.py` | Serena knowledge-state, evidence, and PL acknowledgement helper |
 | `rtk_pre_tool_use.py` | Codex PreToolUse enforcement for the project-local RTK command policy |
@@ -104,8 +104,9 @@ python .\scripts\project_agents.py list
 
 `sync` creates eight self-contained project agents under `.codex/agents/`. Models are pinned by profile:
 
-- PM, PL, and TA use `gpt-5.6-sol`.
-- The three developer seats, QA/SDET, and Build/Release use `gpt-5.6-terra`.
+- PM, PL, TA, QA/SDET, and Build/Release use `gpt-5.6-terra`.
+- The three developer seats use `gpt-5.6-luna`.
+- `research-lane` accepts only developer seats, so simple shard reading, extraction, and structured summaries run on Luna. Research planning, synthesis, validation, review, and approval remain bound to their named organizational seats.
 
 Resolve one seat with an explicit skill packet:
 

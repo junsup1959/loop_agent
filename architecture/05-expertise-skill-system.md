@@ -131,7 +131,7 @@ Output:
   "seat_id": "DEV_<generated-name>",
   "role_key": "dev_1",
   "agent_file": ".codex/agents/DEV_<generated-name>.toml",
-  "model": "gpt-5.6-terra",
+  "model": "gpt-5.6-luna",
   "skill_packet": {
     "explicit_injection": true,
     "skills": [
