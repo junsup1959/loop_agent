@@ -24,7 +24,7 @@
 - 실제 전달 원본은 `output/agent-team-codex-native/`다. 루트의 오래된 `skills/`, `agents/`, `.codex/skills/` 등을 배포 원본으로 사용하지 않는다. 자세한 경계는 [REPOSITORY_CONFIGURATION.md](REPOSITORY_CONFIGURATION.md)에 있다.
 - 번들은 `AGENTS.md`를 의도적으로 포함하지 않는다. 다른 프로젝트의 자동 컨텍스트 규칙을 덮어쓰지 않기 위해서다.
 - 이 번들은 전역 Codex Home을 수정하지 않는다. 대상 프로젝트 안에서만 `.agents/`, `.codex/`, `config/`, `scripts/`를 사용한다.
-- 배포만으로 자동 활성화되지는 않는다. 대상 프로젝트를 신뢰한 뒤 초기화 스크립트로 `.codex/config.toml`을 만들고 Codex를 다시 불러와야 한다.
+- 배포만으로 자동 활성화되지는 않는다. **일반 PowerShell**에서 대상 프로젝트의 초기화 스크립트를 실행해 `.codex/config.toml`을 만든 뒤, 해당 프로젝트를 신뢰하고 Codex를 다시 열어야 한다. Codex 세션 안에서 `.codex/`를 쓰려고 보호 범위를 넓히지 않는다.
 - Goal/Module/Research loop는 현재 사용할 수 있는 Skill 워크플로우다. 아직 완전한 무인 Plan IR 컴파일러나 자동 역할 배정 시스템이 구현되었다는 뜻은 아니다.
 
 ## 설계 원칙
@@ -255,12 +255,11 @@ Serena memory에는 프로젝트 개요, 빌드·테스트 명령, 모듈 지도
 
 ## 설치와 초기화
 
-아래 명령은 반드시 전달 번들 디렉터리에서 실행한다. 루트의 동명 `scripts/`는 현재 bundle runtime이 아니다.
+전달 번들을 대상 프로젝트에 overlay한 뒤, 아래 명령은 **일반 PowerShell**에서 대상 프로젝트 루트로 이동해 실행한다. Codex 세션 안에서 실행하지 않는다.
 
 ```powershell
-Set-Location .\output\agent-team-codex-native
+Set-Location <target-project> # e.g. C:\project\manager\sdetector-manager
 
-# 권장: Codex에서 $agent-team-bootstrap을 명시적으로 선택해 실행
 # 수동 core initialization:
 python .\scripts\init_agent_team.py
 
@@ -268,7 +267,7 @@ python .\scripts\init_agent_team.py
 python .\scripts\init_agent_team.py --check
 ```
 
-초기화는 필요한 Python 의존성 확인, Skill 검증, 좌석 registry 생성 또는 보존, `.codex/agents/` 동기화, 프로젝트 로컬 `.codex/config.toml` 생성, `.agent-team/state` 초기화를 수행한다. 이후 대상 프로젝트를 신뢰하고 Codex를 reload/restart해야 생성된 config와 좌석을 읽는다.
+초기화는 필요한 Python 의존성 확인, Skill 검증, 좌석 registry 생성 또는 보존, `.codex/agents/` 동기화, 프로젝트 로컬 `.codex/config.toml` 생성, `.agent-team/state` 초기화를 수행한다. 생성되는 설정은 `workspace-write`, `approval_policy = "on-request"`, 추가 writable root 없음, network off를 요청한다. 이후 대상 프로젝트를 신뢰하고 Codex를 reload/restart해야 생성된 config와 좌석을 읽는다. 단, 호스트가 `.codex/`를 보호 경로로 유지하면 이 설정이 그 보호를 우회하지는 않는다.
 
 선택형 MCP는 별도로 활성화한다.
 
@@ -314,6 +313,8 @@ python .\scripts\project_agents.py regenerate --confirm-identity-reset
 - `project_agents.py validate`: 역할 템플릿 6개와 좌석 8개 통과;
 - 역할 고정 모델 정책: Terra 5석(PM·PL·TA·QA/SDET·Build/Release), Luna 3석(개발) 확인;
 - `research-lane`: 개발 3석만 허용되어 단순 읽기·추출·구조화 요약이 Luna로 제한되는 것 확인;
+- Serena 준비·project knowledge 검사가 사용자 프로필 설정을 요구하지 않고 대상 프로젝트의 `.serena/project.yml`과 memory layout만 확인하는 것 검증;
+- 초기화기가 프로젝트 로컬 `workspace-write`·`on-request` 설정을 생성하고, 추가 writable root와 network access를 열지 않는 것 검증;
 - 번들 Python 스크립트 12개 문법 compile 통과;
 - TOML 24개 parse 통과;
 - `pip check` 통과;
@@ -327,7 +328,7 @@ python .\scripts\project_agents.py regenerate --confirm-identity-reset
 현재 재배포본의 파일 기반 SHA-256은 다음과 같다.
 
 ```text
-05c8436b1691b501ba92297cd98f9c0aa4a43f5a4139f2438748af79457a55fa
+3c599307c2017b8ad0ed2a495085d90a40c23ef5d9bd51dfb85e91c3eaa6f29d
 ```
 
 이 값은 전달 bundle의 파일만 대상으로 하며, 설치 뒤 생성되는 `.agent-team` runtime state는 포함하지 않는다.

@@ -248,21 +248,8 @@ def _run(
     return completed
 
 
-def _global_serena_config_path() -> Path:
-    profile_root = os.environ.get("USERPROFILE")
-    if profile_root:
-        return Path(profile_root) / ".serena" / "serena_config.yml"
-    return Path.home() / ".serena" / "serena_config.yml"
-
-
 def _require_serena_setup(project: Path) -> str:
     executable = _command_path("serena")
-    config_path = _global_serena_config_path()
-    if not config_path.is_file():
-        raise ProjectKnowledgeError(
-            "Serena CLI configuration is missing. Run the project-local "
-            "serena-project-setup skill before the project knowledge lifecycle."
-        )
     project_config = project / SERENA_CONFIG_RELATIVE_PATH
     if not project_config.is_file():
         raise ProjectKnowledgeError(

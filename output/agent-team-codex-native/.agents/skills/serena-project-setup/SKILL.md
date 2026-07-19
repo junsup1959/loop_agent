@@ -18,24 +18,20 @@ Configure Serena deliberately when the project enables this recommended capabili
    serena start-mcp-server --help
    ```
 
-3. When the Serena CLI global configuration is absent, initialize the CLI once. This is a Serena CLI prerequisite, not a Codex configuration; keep the team and MCP configuration project-local.
-
-   ```powershell
-   serena init --language-backend LSP
-   ```
-
-4. Create or repair project-local Serena configuration. Use the CLI first; use `serena config edit` only when a deliberate global CLI setting is required.
+3. Create or repair the project-local Serena configuration from a normal PowerShell session, outside an active Codex sandbox. Do not run `serena init` or `serena config edit`: both change user-level Serena CLI state and are outside this project-local setup workflow.
 
    ```powershell
    Set-Location <target-project>
-   serena project create --index       # only when .serena/project.yml is absent
-   serena project index                # refresh an existing project index
+   serena project create --index       # when .serena/project.yml is absent
+   serena project index                # when .serena/project.yml already exists
    serena project health-check
    serena memories initialize
    ```
 
-5. Inspect `.serena/project.yml`. Configure only the languages and workspace folders that belong to the target project. Resolve a failed health check before starting the team.
-6. When a custom context, mode, or prompt override is actually needed, inspect before creating it:
+   If `serena project create` cannot proceed without a user-level configuration change, return the exact blocker. Do not work around it by writing under the user profile.
+
+4. Inspect `.serena/project.yml`. Configure only the languages and workspace folders that belong to the target project. Resolve a failed health check before starting the team.
+5. When a custom context, mode, or prompt override is actually needed, inspect before creating it:
 
    ```powershell
    serena context list

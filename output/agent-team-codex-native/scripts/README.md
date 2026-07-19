@@ -25,10 +25,18 @@ For a first installation, a clean checkout, or a Serena service repair, explicit
 
 `$agent-team-bootstrap` performs this order:
 
-1. invokes `python .\scripts\init_agent_team.py` to create the core local team control plane;
+1. invokes `python .\scripts\init_agent_team.py` from normal PowerShell to create the core local team control plane;
 2. optionally invokes `$serena-project-setup` when semantic source exploration and project memories are useful;
 3. enables a successful Serena service with `--enable-mcp serena`;
 4. optionally enables Sequential Thinking with `--enable-mcp sequentialthinking`.
+
+Run the write-producing initializer from normal PowerShell outside an active Codex sandbox, with the current directory set to the target project. This preserves Codex-protected paths while allowing the one project-local `.codex/` generation step.
+
+```powershell
+Set-Location <target-project>
+python .\scripts\init_agent_team.py
+python .\scripts\init_agent_team.py --check
+```
 
 `init_agent_team.py` does not run `serena init`, create or index a Serena project, change Serena CLI configuration, or start a Serena server. Core initialization:
 
@@ -49,7 +57,7 @@ python .\scripts\init_agent_team.py --check
 
 Use `--json` with either mode for machine-readable output.
 
-Codex loads project configuration only for a trusted project. Trust this project and restart or reload the Codex client after the first initialization so it loads `.codex/config.toml` and discovers the generated seat agents.
+Codex loads project configuration only for a trusted project. Trust this project and restart or reload the Codex client after the first initialization so it loads `.codex/config.toml` and discovers the generated seat agents. The generated project config requests `workspace-write` with no additional writable roots and disabled network access; host-managed protected paths can still remain read-only.
 
 ## RTK Command Enforcement
 
@@ -69,6 +77,7 @@ The initializer writes only a managed project-local `.codex/config.toml` file. I
 
 - eight custom seat agents auto-discovered from `.codex/agents/`;
 - `agents.max_threads = 8` and `agents.max_depth = 1`.
+- `sandbox_mode = "workspace-write"`, `approval_policy = "on-request"`, no additional writable roots, and disabled network access.
 
 The optional `serena` and `sequentialthinking` MCP blocks are emitted only after an explicit `--enable-mcp` command. Both use `required = false`. Their enabled state and the last known Serena URL are persisted in `.agent-team/state/mcp-capabilities.json`, so ordinary core initialization and `--check` do not probe or fail on MCP availability.
 
