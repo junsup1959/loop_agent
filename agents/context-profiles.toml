@@ -1,0 +1,117 @@
+[context]
+version = 1
+default_profile = "auto"
+
+[role_defaults]
+pm = "requirements"
+pl = "planning"
+ta = "architecture-review"
+dev_1 = "implementation"
+dev_2 = "implementation"
+dev_3 = "implementation"
+qa_sdet = "quality-review"
+build_release = "build-release"
+
+[profiles.requirements]
+roles = ["pm"]
+expansion_level = 1
+max_messages = 6
+max_message_chars = 8000
+max_snapshot_chars = 6000
+max_paths = 0
+max_diff_chars = 0
+max_commits = 2
+max_skills = 2
+max_skill_chars = 8000
+max_packet_chars = 24000
+
+[profiles.planning]
+roles = ["pl"]
+expansion_level = 1
+max_messages = 6
+max_message_chars = 10000
+max_snapshot_chars = 6000
+max_paths = 4
+max_diff_chars = 8000
+max_commits = 6
+max_skills = 2
+max_skill_chars = 10000
+max_packet_chars = 36000
+
+[profiles."architecture-review"]
+roles = ["ta"]
+expansion_level = 2
+max_messages = 10
+max_message_chars = 14000
+max_snapshot_chars = 8000
+max_paths = 12
+max_diff_chars = 28000
+max_commits = 8
+max_skills = 2
+max_skill_chars = 12000
+max_packet_chars = 64000
+
+[profiles.implementation]
+roles = ["dev_1", "dev_2", "dev_3"]
+expansion_level = 1
+max_messages = 8
+max_message_chars = 10000
+max_snapshot_chars = 6000
+max_paths = 8
+max_diff_chars = 18000
+max_commits = 6
+max_skills = 2
+max_skill_chars = 12000
+max_packet_chars = 52000
+
+[profiles."quality-review"]
+roles = ["qa_sdet"]
+expansion_level = 1
+max_messages = 10
+max_message_chars = 12000
+max_snapshot_chars = 7000
+max_paths = 12
+max_diff_chars = 22000
+max_commits = 8
+max_skills = 2
+max_skill_chars = 12000
+max_packet_chars = 60000
+
+[profiles."build-release"]
+roles = ["build_release"]
+expansion_level = 1
+max_messages = 8
+max_message_chars = 10000
+max_snapshot_chars = 6000
+max_paths = 10
+max_diff_chars = 16000
+max_commits = 6
+max_skills = 2
+max_skill_chars = 12000
+max_packet_chars = 50000
+
+[profiles.integration]
+roles = ["pl"]
+expansion_level = 1
+max_messages = 12
+max_message_chars = 14000
+max_snapshot_chars = 8000
+max_paths = 16
+max_diff_chars = 24000
+max_commits = 10
+max_skills = 2
+max_skill_chars = 12000
+max_packet_chars = 64000
+
+[profiles.review]
+roles = ["pl", "ta", "qa_sdet"]
+expansion_level = 1
+max_messages = 10
+max_message_chars = 12000
+max_snapshot_chars = 7000
+max_paths = 10
+max_diff_chars = 22000
+max_commits = 8
+max_skills = 2
+max_skill_chars = 12000
+max_packet_chars = 56000

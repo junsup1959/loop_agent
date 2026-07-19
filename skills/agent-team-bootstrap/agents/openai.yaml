@@ -1,0 +1,6 @@
+interface:
+  display_name: "Agent Team Bootstrap"
+  short_description: "Install the local agent team in the required order"
+  default_prompt: "Use $agent-team-bootstrap to prepare Serena and install this project-local agent team."
+policy:
+  allow_implicit_invocation: false

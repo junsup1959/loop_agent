@@ -1,0 +1,7 @@
+interface:
+  display_name: "Research Loop"
+  short_description: "Run evidence-led large-scale research loops."
+  default_prompt: "Use $research-loop to investigate a large source corpus with traceable evidence."
+
+policy:
+  allow_implicit_invocation: false

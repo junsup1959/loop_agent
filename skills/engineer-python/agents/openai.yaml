@@ -1,0 +1,6 @@
+interface:
+  display_name: "Engineer Python"
+  short_description: "Engineer reliable Python components"
+  default_prompt: "Use $engineer-python to implement or review the current Python task."
+policy:
+  allow_implicit_invocation: false

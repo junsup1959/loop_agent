@@ -1,0 +1,6 @@
+interface:
+  display_name: "Modernize Legacy Systems"
+  short_description: "Plan safe incremental modernization"
+  default_prompt: "Use $modernize-legacy-systems to design a phased, behavior-preserving modernization."
+policy:
+  allow_implicit_invocation: false

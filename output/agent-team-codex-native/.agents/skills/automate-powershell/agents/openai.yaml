@@ -1,0 +1,6 @@
+interface:
+  display_name: "Automate PowerShell"
+  short_description: "Build reliable PowerShell automation"
+  default_prompt: "Use $automate-powershell to implement or review the current PowerShell automation task."
+policy:
+  allow_implicit_invocation: false

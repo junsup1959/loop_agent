@@ -1,0 +1,44 @@
+[registry]
+version = 1
+generator = "scripts/project_agents.py"
+generated_at_utc = "2026-07-19T11:17:40.609905+00:00"
+
+[[seats]]
+slot_key = "pm"
+seat_id = "PM_임민재"
+display_name = "임민재"
+
+[[seats]]
+slot_key = "pl"
+seat_id = "PL_신예은"
+display_name = "신예은"
+
+[[seats]]
+slot_key = "ta"
+seat_id = "TA_권지호"
+display_name = "권지호"
+
+[[seats]]
+slot_key = "dev_1"
+seat_id = "DEV_최서윤"
+display_name = "최서윤"
+
+[[seats]]
+slot_key = "dev_2"
+seat_id = "DEV_정예준"
+display_name = "정예준"
+
+[[seats]]
+slot_key = "dev_3"
+seat_id = "DEV_정예은"
+display_name = "정예은"
+
+[[seats]]
+slot_key = "qa_sdet"
+seat_id = "QA_SDET_최수아"
+display_name = "최수아"
+
+[[seats]]
+slot_key = "build_release"
+seat_id = "BUILD_RELEASE_정서준"
+display_name = "정서준"

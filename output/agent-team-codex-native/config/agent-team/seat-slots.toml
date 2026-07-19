@@ -1,0 +1,55 @@
+[[slots]]
+slot_key = "pm"
+id_prefix = "PM"
+role_key = "pm"
+role_template = "pm"
+runtime_profile = "pm"
+
+[[slots]]
+slot_key = "pl"
+id_prefix = "PL"
+role_key = "pl"
+role_template = "pl"
+runtime_profile = "pl"
+
+[[slots]]
+slot_key = "ta"
+id_prefix = "TA"
+role_key = "ta"
+role_template = "ta"
+runtime_profile = "ta"
+
+[[slots]]
+slot_key = "dev_1"
+id_prefix = "DEV"
+role_key = "dev_1"
+role_template = "developer_slot"
+runtime_profile = "developer"
+
+[[slots]]
+slot_key = "dev_2"
+id_prefix = "DEV"
+role_key = "dev_2"
+role_template = "developer_slot"
+runtime_profile = "developer"
+
+[[slots]]
+slot_key = "dev_3"
+id_prefix = "DEV"
+role_key = "dev_3"
+role_template = "developer_slot"
+runtime_profile = "developer"
+
+[[slots]]
+slot_key = "qa_sdet"
+id_prefix = "QA_SDET"
+role_key = "qa_sdet"
+role_template = "qa_sdet"
+runtime_profile = "quality"
+
+[[slots]]
+slot_key = "build_release"
+id_prefix = "BUILD_RELEASE"
+role_key = "build_release"
+role_template = "build_release"
+runtime_profile = "build_release"

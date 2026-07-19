@@ -1,0 +1,6 @@
+interface:
+  display_name: "Review Solution Architecture"
+  short_description: "Review boundaries, contracts, and risk"
+  default_prompt: "Use $review-solution-architecture to assess the current design against solution evidence."
+policy:
+  allow_implicit_invocation: false

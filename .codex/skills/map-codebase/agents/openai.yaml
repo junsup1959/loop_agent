@@ -1,0 +1,6 @@
+interface:
+  display_name: "Map Codebase"
+  short_description: "Trace code paths and change impact"
+  default_prompt: "Use $map-codebase to map the owning paths, symbols, state, and dependencies before changes."
+policy:
+  allow_implicit_invocation: false

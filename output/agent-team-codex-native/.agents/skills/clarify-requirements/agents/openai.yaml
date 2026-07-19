@@ -1,0 +1,6 @@
+interface:
+  display_name: "Clarify Requirements"
+  short_description: "Normalize scope and acceptance criteria"
+  default_prompt: "Use $clarify-requirements to turn the current request into implementation-ready requirements."
+policy:
+  allow_implicit_invocation: false

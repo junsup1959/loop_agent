@@ -1,0 +1,6 @@
+interface:
+  display_name: "Goal Loop"
+  short_description: "Supervise goals through evidence and integration"
+  default_prompt: "Use $goal-loop to supervise a bounded development goal."
+policy:
+  allow_implicit_invocation: false

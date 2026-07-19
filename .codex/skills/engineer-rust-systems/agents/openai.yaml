@@ -1,0 +1,6 @@
+interface:
+  display_name: "Engineer Rust Systems"
+  short_description: "Engineer safe Rust system components"
+  default_prompt: "Use $engineer-rust-systems to implement or review the current Rust systems task."
+policy:
+  allow_implicit_invocation: false

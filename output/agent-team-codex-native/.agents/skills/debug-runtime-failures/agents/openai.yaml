@@ -1,0 +1,6 @@
+interface:
+  display_name: "Debug Runtime Failures"
+  short_description: "Isolate failures with evidence"
+  default_prompt: "Use $debug-runtime-failures to reproduce and isolate the current failure."
+policy:
+  allow_implicit_invocation: false

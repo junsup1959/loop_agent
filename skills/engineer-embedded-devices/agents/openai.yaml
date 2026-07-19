@@ -1,0 +1,6 @@
+interface:
+  display_name: "Engineer Embedded Devices"
+  short_description: "Engineer reliable device integrations"
+  default_prompt: "Use $engineer-embedded-devices to implement or review the current embedded or device task."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Engineer Build and Release"
+  short_description: "Protect builds, packaging, and rollback"
+  default_prompt: "Use $engineer-build-release to validate the current build and release boundary."
+policy:
+  allow_implicit_invocation: false
