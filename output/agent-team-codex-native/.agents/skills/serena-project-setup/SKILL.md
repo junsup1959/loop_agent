@@ -1,15 +1,15 @@
 ---
 name: serena-project-setup
-description: Prepare a local project for the optional shared Serena Streamable HTTP MCP capability. Use when registering or repairing a Serena project, selecting language support, indexing and health-checking source analysis, initializing Serena memories, configuring contexts or modes, or starting or rotating the project-local shared Serena service endpoint.
+description: Prepare a local project for the optional project-local Serena stdio MCP capability. Use when registering or repairing a Serena project, selecting language support, indexing and health-checking source analysis, initializing Serena memories, or configuring contexts and modes before an agent team starts.
 ---
 
 # Serena Project Setup
 
-Configure Serena deliberately when the project enables this recommended capability. Keep all agents on one local project and one shared Streamable HTTP server; do not let each spawned agent start a separate stdio server.
+Prepare Serena deliberately before enabling the optional MCP capability. Keep the project setup local; Codex starts Serena through stdio for each MCP client and does not use a shared HTTP service.
 
 ## Setup Flow
 
-1. Confirm the target is the one project all concurrent agents will work on. A shared Streamable HTTP Serena server has one active project.
+1. Confirm the target project is the project the agent team will work on.
 2. Inspect the installed CLI instead of assuming an option:
 
    ```powershell
@@ -18,7 +18,7 @@ Configure Serena deliberately when the project enables this recommended capabili
    serena start-mcp-server --help
    ```
 
-3. Create or repair the project-local Serena configuration from a normal PowerShell session, outside an active Codex sandbox. Do not run `serena init` or `serena config edit`: both change user-level Serena CLI state and are outside this project-local setup workflow.
+3. Create or repair project-local Serena configuration from a normal PowerShell session, outside an active Codex sandbox. Do not change user-level Serena configuration unless the CLI reports an unavoidable prerequisite.
 
    ```powershell
    Set-Location <target-project>
@@ -28,10 +28,8 @@ Configure Serena deliberately when the project enables this recommended capabili
    serena memories initialize
    ```
 
-   If `serena project create` cannot proceed without a user-level configuration change, return the exact blocker. Do not work around it by writing under the user profile.
-
-4. Inspect `.serena/project.yml`. Configure only the languages and workspace folders that belong to the target project. Resolve a failed health check before starting the team.
-5. When a custom context, mode, or prompt override is actually needed, inspect before creating it:
+4. Inspect `.serena/project.yml`. Configure only the languages and workspace folders that belong to the target project. Resolve a failed health check before enabling the team MCP configuration.
+5. When a custom context, mode, or prompt override is needed, inspect before creating it:
 
    ```powershell
    serena context list
@@ -39,31 +37,21 @@ Configure Serena deliberately when the project enables this recommended capabili
    serena prompts list
    ```
 
-   Create or edit only a project-specific customization that has a stated team purpose. Do not create speculative overrides.
+   Create or edit only a project-specific customization with a stated team purpose.
 
-## Shared HTTP Service
+## Stdio MCP Configuration
 
-Use `config/agent-team/serena-service.toml` as the project-local service contract. Start the server through the bundled service manager so it chooses an available loopback port, persists the endpoint in `.agent-team/state/serena-service.json`, and prevents agent spawn from creating a new MCP process.
-
-```powershell
-python .\.agents\skills\serena-project-setup\scripts\manage_serena_service.py `
-  --service-config .\config\agent-team\serena-service.toml start `
-  --project <target-project>
-```
-
-The command repeats the Serena health check, selects a random available port, and persists both the concrete endpoint and its successful health record. It refuses to start on a failed health check. After this explicit setup succeeds, run `python .\scripts\init_agent_team.py --enable-mcp serena` to add the optional MCP configuration.
-
-Use the state file to verify the endpoint before activating agents:
+Do not start an HTTP service, reserve a port, or write an endpoint state file. After the project is ready, let the project setup script generate the Codex MCP entry:
 
 ```powershell
-python .\.agents\skills\serena-project-setup\scripts\manage_serena_service.py `
-  --service-config .\config\agent-team\serena-service.toml status
+python .\scripts\init_agent_team.py --configure-mcp serena
+python .\scripts\init_agent_team.py --check-mcp serena
 ```
 
-Do not use port `0` directly in Codex configuration. The manager resolves a random port first, records the concrete URL, then the configuration generator consumes that URL.
+The generated entry uses `serena start-mcp-server --project-from-cwd --context codex --transport stdio`. It explicitly sets both `--enable-web-dashboard false` and `--open-web-dashboard false`.
 
 ## Knowledge Boundary
 
 After setup, all roles may read targeted Serena memories and perform semantic exploration. The PL alone publishes or refreshes shared project memory; other roles provide concise, evidence-backed proposals through SQLite.
 
-Do not preload every memory, store active task state in Serena memory, expose the HTTP listener beyond loopback, or use one shared server for different active projects.
+Do not preload every memory, store active task state in Serena memory, or treat MCP runtime state as Serena memory.

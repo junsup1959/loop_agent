@@ -9,7 +9,8 @@ description = "Validated project-local Codex agent-team configuration with bound
 skill_root = ".agents/skills"
 custom_agent_root = ".codex/agents"
 team_configuration_root = "config/agent-team"
-bootstrap_skill = ".agents/skills/agent-team-bootstrap/SKILL.md"
+mcp_dependency_installer = "scripts/install_mcp_dependencies.bat"
+project_setup_installer = "scripts/setup_agent_team.bat"
 activation_instructions = "config/agent-team/activation-instructions.md"
 recommended_tools = "config/agent-team/recommended-tools.md"
 rtk_policy = "config/agent-team/RTK.md"
@@ -19,7 +20,7 @@ research_ledger = "scripts/agent_team_research.py"
 research_taskflow = "scripts/agent_team_taskflow.py"
 
 [contents]
-skill_count = 24
+skill_count = 23
 custom_agent_count = 8
 legacy_skill_root_absent = true
 legacy_agent_root_absent = true
@@ -47,10 +48,13 @@ queue_outbox_viewer_integration_validated = true
 activation_instruction_injection_validated = true
 recommended_tool_injection_validated = true
 rtk_pre_tool_use_hook_validated = true
+mcp_install_and_setup_separation_validated = true
 temporary_test_sources_retained = false
 
 [activation]
 mcp_capabilities_optional_by_default = true
+mcp_dependency_installer_required_before_project_setup = true
+project_setup_configures_both_mcp_capabilities = true
 serena_setup_required_before_serena_enablement = true
 codex_config_generated_without_mcp_prerequisite = true
 airflow_dag_execution_requires_linux_or_wsl = true

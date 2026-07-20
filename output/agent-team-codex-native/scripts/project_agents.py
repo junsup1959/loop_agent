@@ -502,7 +502,6 @@ def _load_static_configuration() -> dict[str, Any]:
     serena_knowledge_policy_path = _configured_path(
         team.get("serena_knowledge_policy"), "serena_knowledge_policy"
     )
-    serena_service_path = _configured_path(team.get("serena_service"), "serena_service")
     activation_instructions_path = _configured_path(
         team.get("activation_instructions"), "activation_instructions"
     )
@@ -579,7 +578,6 @@ def _load_static_configuration() -> dict[str, Any]:
         slots_path,
         name_pool_path,
         serena_knowledge_policy_path,
-        serena_service_path,
         activation_instructions_path,
         recommended_tools_path,
         *role_paths,
@@ -592,7 +590,6 @@ def _load_static_configuration() -> dict[str, Any]:
         "runtime_root": runtime_root,
         "registry_path": registry_path,
         "serena_knowledge_policy_path": serena_knowledge_policy_path,
-        "serena_service_path": serena_service_path,
         "activation_instructions": activation_instructions,
         "recommended_tools": recommended_tools,
         "profiles": profiles,

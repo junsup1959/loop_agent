@@ -6,7 +6,9 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 
 | File | Responsibility |
 |---|---|
-| `init_agent_team.py` | Core team initialization, optional MCP enablement, MCP URL refresh, and verification |
+| `install_mcp_dependencies.bat` | External installer for Serena CLI and the project-local Sequential Thinking dependency |
+| `setup_agent_team.bat` | External project setup for core state, Serena service, Codex configuration, and both MCP checks |
+| `init_agent_team.py` | Core team initialization, separated MCP dependency/install/configuration operations, URL refresh, and verification |
 | `project_agents.py` | Random seat initialization, role/profile validation, Codex agent compilation, and seat-to-skill resolution |
 | `project_skills.py` | Project-local expertise catalog validation, synchronization, and role eligibility |
 | `agent_team_queue.py` | SQLite durable message queue |
@@ -21,24 +23,21 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 
 ## First Installation and Repair
 
-For a first installation, a clean checkout, or a Serena service repair, explicitly select the project-local `$agent-team-bootstrap` skill. It initializes the core team and then enables recommended MCP capabilities only when they are wanted. This bundle intentionally has no `AGENTS.md`; bootstrap is not automatically injected.
-
-`$agent-team-bootstrap` performs this order:
-
-1. invokes `python .\scripts\init_agent_team.py` from normal PowerShell to create the core local team control plane;
-2. optionally invokes `$serena-project-setup` when semantic source exploration and project memories are useful;
-3. enables a successful Serena service with `--enable-mcp serena`;
-4. optionally enables Sequential Thinking with `--enable-mcp sequentialthinking`.
-
-Run the write-producing initializer from normal PowerShell outside an active Codex sandbox, with the current directory set to the target project. This preserves Codex-protected paths while allowing the one project-local `.codex/` generation step.
+Use two externally executed batch files for first installation or a clean checkout. Run them from a normal PowerShell or Command Prompt outside Codex, with the target project as the current directory. This bundle intentionally has no `AGENTS.md` and no bootstrap skill.
 
 ```powershell
 Set-Location <target-project>
-python .\scripts\init_agent_team.py
-python .\scripts\init_agent_team.py --check
+.\scripts\install_mcp_dependencies.bat --dry-run
+.\scripts\install_mcp_dependencies.bat
+.\scripts\setup_agent_team.bat --dry-run
+.\scripts\setup_agent_team.bat
 ```
 
-`init_agent_team.py` does not run `serena init`, create or index a Serena project, change Serena CLI configuration, or start a Serena server. Core initialization:
+`install_mcp_dependencies.bat` is the dependency phase. It installs the Serena CLI with `uv tool install -p 3.13 serena-agent` only when `serena.exe` is absent, installs the exact Sequential Thinking package into `.agent-team/mcp`, and strictly verifies both dependencies. It never creates `.codex/config.toml`, creates a Serena project, starts a Serena server, or calls `serena init` or `serena config edit`.
+
+`setup_agent_team.bat` is the project configuration phase. It initializes the core control plane, verifies the already-installed MCP dependencies, creates or indexes `.serena/project.yml`, initializes memories, starts the shared loopback HTTP service, configures both MCP entries, strictly checks both entries, and verifies the core control plane. It does not install an MCP dependency; dependency absence is a hard setup failure with a prompt to run the install batch first.
+
+`init_agent_team.py` remains the reusable core/control-plane command. Its plain invocation does not create or index a Serena project, change Serena CLI configuration, start a Serena server, or enable an MCP. Core initialization:
 
 1. verifies exact Python package pins from `scripts/requirements.txt` and installs missing or mismatched dependencies with `pip`;
 2. validates native project-local skills without creating a second mirror;
@@ -79,13 +78,13 @@ The initializer writes only a managed project-local `.codex/config.toml` file. I
 - `agents.max_threads = 8` and `agents.max_depth = 1`.
 - `sandbox_mode = "workspace-write"`, `approval_policy = "on-request"`, no additional writable roots, and disabled network access.
 
-The optional `serena` and `sequentialthinking` MCP blocks are emitted only after an explicit `--enable-mcp` command. Both use `required = false`. Their enabled state and the last known Serena URL are persisted in `.agent-team/state/mcp-capabilities.json`, so ordinary core initialization and `--check` do not probe or fail on MCP availability.
+The `serena` and `sequentialthinking` MCP blocks are emitted only after explicit configuration. `setup_agent_team.bat` uses `--configure-mcp`, which refuses to provision a missing dependency; generic manual repair may use `--enable-mcp` when deliberate provisioning is intended. Both generated blocks use `required = false`. Their enabled state and the last known Serena URL are persisted in `.agent-team/state/mcp-capabilities.json`, so ordinary core initialization and `--check` do not probe or fail on MCP availability.
 
 The Serena service manager selects a free loopback port before configuration generation; port `0` is never written to Codex configuration. A spawned role agent connects to that shared endpoint and never starts its own Serena process. The listener is local to one active project and must not be reused for a different project.
 
 All roles receive explicitly injected recommended-tool guidance. They may use targeted Serena semantic exploration and only the named project-memory references selected for their activation when Serena is enabled and available. Tool availability does not grant role authority. The PL alone publishes, refreshes, renames, or deletes shared Serena project memories; other roles submit evidence-backed proposals through SQLite.
 
-The former `mcp-package/` directory is not used. Sequential Thinking is installed only by `--enable-mcp sequentialthinking`; its absence never blocks core team initialization.
+The former `mcp-package/` directory is not used. Sequential Thinking is installed by `--install-mcp-dependencies`; `setup_agent_team.bat` configures it only after the strict dependency check. Its absence never blocks a deliberately core-only initialization.
 
 ## Project Agent Seats
 

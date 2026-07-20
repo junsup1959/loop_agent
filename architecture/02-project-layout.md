@@ -34,8 +34,6 @@ project-root/
       registry.toml
   skills/
     catalog.toml
-    agent-team-bootstrap/
-      SKILL.md
     serena-project-setup/
       SKILL.md
       scripts/
@@ -55,6 +53,8 @@ project-root/
         agents/
           openai.yaml
   scripts/
+    install_mcp_dependencies.bat
+    setup_agent_team.bat
     init_agent_team.py
     project_agents.py
     project_skills.py
@@ -82,7 +82,7 @@ project-root/
 
 The canonical agent source is `agents/`. `agents/seats/registry.toml` is generated once by the project initializer and then becomes the durable seat-identity registry. The `.codex/agents/` tree is synchronized output and must not be edited independently.
 
-`$agent-team-bootstrap` is the project-local first-installation entry point. Before the normal runtime skill mirror exists, `AGENTS.md` routes the activation to `skills/agent-team-bootstrap/SKILL.md`; after initialization, the same canonical package is synchronized for normal role binding. The bootstrap invokes `$serena-project-setup` before `scripts/init_agent_team.py`. The Serena setup skill creates or repairs the Serena project, indexes and health-checks it, initializes memories, and starts the one shared loopback Streamable HTTP service. The initializer owns the generated `.codex/config.toml` only after that service has persisted a concrete endpoint. It configures project-local MCP bindings, eight-agent concurrency cap, and generated seat comments; it never runs Serena initialization or starts a Serena process.
+First installation has no bootstrap skill. A human runs `scripts/install_mcp_dependencies.bat` outside Codex to install the Serena CLI and project-local Sequential Thinking dependency, then runs `scripts/setup_agent_team.bat` outside Codex to create or repair the Serena project, index and health-check it, initialize memories, start the shared loopback Streamable HTTP service, and configure the project-local MCP bindings. The setup batch owns generated `.codex/config.toml` after the service has persisted a concrete endpoint. It configures the eight-agent concurrency cap and generated seat comments; it never runs `serena init` or `serena config edit`.
 
 The canonical skill source is `skills/`. The `.codex/skills/` tree is synchronized output and must not be edited independently.
 

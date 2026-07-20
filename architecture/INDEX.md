@@ -78,7 +78,8 @@ Examples:
 
 | Component | Project path |
 |---|---|
-| First-installation workflow | `skills/agent-team-bootstrap/` |
+| MCP dependency installation | `scripts/install_mcp_dependencies.bat` |
+| Project setup and MCP configuration | `scripts/setup_agent_team.bat` |
 | Serena project and shared-service setup | `skills/serena-project-setup/` |
 | Control-plane initializer and verifier | `scripts/init_agent_team.py` |
 | Canonical agent team configuration | `agents/` |

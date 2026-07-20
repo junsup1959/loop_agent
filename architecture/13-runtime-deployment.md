@@ -32,17 +32,15 @@ Project-Local MCP Services
 
 The POSIX runtime may be WSL2 or a local Linux container. It remains local to the project environment.
 
-## Project Codex Bootstrap
+## Project Installation and Configuration
 
-`$agent-team-bootstrap` is the required first-installation workflow. It performs this order:
+First installation is executed by a human from a normal terminal outside Codex, not by a bootstrap skill:
 
-1. invoke `$serena-project-setup` for the target project;
-2. create or repair the Serena project, select its languages and workspace folders, index it, resolve health-check failures, and initialize Serena memories;
-3. start one shared Serena Streamable HTTP service on an available `127.0.0.1` port and persist the concrete endpoint in `.agent-team/state/serena-service.json`;
-4. confirm that the shared endpoint is reachable;
-5. invoke `scripts/init_agent_team.py`.
+1. run `scripts/install_mcp_dependencies.bat` to ensure the Serena CLI and the pinned Sequential Thinking package under `.agent-team/mcp` are installed and strictly verified;
+2. run `scripts/setup_agent_team.bat` to initialize the core control plane, create or repair the Serena project, select its languages and workspace folders, index it, resolve health-check failures, initialize Serena memories, and start one shared Streamable HTTP service on an available `127.0.0.1` port;
+3. configure both already-installed MCP dependencies, persist the concrete Serena endpoint in `.agent-team/state/serena-service.json`, strictly check both MCP endpoints, and verify the generated core control plane.
 
-After Serena setup has succeeded, `scripts/init_agent_team.py` verifies or installs pinned Python dependencies, installs the pinned Sequential Thinking npm package under `.agent-team/mcp`, synchronizes project-local skills and custom seat agents, initializes SQLite, and writes `.codex/config.toml`. It does not initialize Serena, alter Serena CLI settings, or start a Serena process.
+`scripts/init_agent_team.py` supplies the separated dependency install/check and MCP configuration operations. The ordinary core initializer synchronizes project-local skills and custom seat agents, initializes SQLite, and writes `.codex/config.toml`; it does not initialize Serena, alter Serena CLI settings, or start a Serena process.
 
 The generated Codex configuration connects Serena through its persisted Streamable HTTP URL, for example `http://127.0.0.1:<port>/mcp`. It does not contain a Serena stdio command, arguments, or tool allow-list. The shared service is used only by agents assigned to the same active project. Sequential Thinking continues to start through the exact Node package entrypoint installed beneath the configured project-local runtime root. Project trust and a Codex restart or reload are required before a client loads a changed `.codex/config.toml`.
 

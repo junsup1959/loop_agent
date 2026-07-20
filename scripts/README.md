@@ -19,25 +19,12 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 
 ## First Installation and Repair
 
-Use the project-local `$agent-team-bootstrap` skill for a first installation, a clean checkout, or a Serena service repair. It is the only workflow that composes Serena setup with agent-team initialization. Before the normal runtime skill mirror exists, `AGENTS.md` directs the activation to the canonical source at `skills/agent-team-bootstrap/SKILL.md`.
+The canonical delivery bundle under `output/agent-team-codex-native/` has no bootstrap skill. A human runs two batch files from a normal terminal outside Codex:
 
-`$agent-team-bootstrap` performs this required order:
+1. `scripts/install_mcp_dependencies.bat` installs or verifies the Serena CLI and the pinned project-local Sequential Thinking package;
+2. `scripts/setup_agent_team.bat` initializes the team, creates or repairs `.serena/project.yml`, indexes and health-checks source analysis, initializes Serena memories, starts one shared loopback Streamable HTTP service, configures both MCP entries, and strictly checks them.
 
-1. invokes `$serena-project-setup` for this one project;
-2. creates or repairs `.serena/project.yml`, configures the actual project languages and workspace folders, indexes the project, resolves health-check failures, and initializes Serena memories;
-3. starts one shared loopback Serena Streamable HTTP service using `agents/serena-service.toml`;
-4. persists its randomly selected concrete endpoint in `.agent-team/state/serena-service.json`;
-5. invokes `python .\scripts\init_agent_team.py` only after that service is reachable.
-
-`init_agent_team.py` does not run `serena init`, create or index a Serena project, change Serena CLI configuration, or start a Serena server. It requires the completed Serena setup and then:
-
-1. verifies exact Python package pins from `scripts/requirements.txt` and installs missing or mismatched dependencies with `pip`;
-2. installs the pinned Sequential Thinking MCP package with `npm install` under `.agent-team/mcp`;
-3. validates and synchronizes all project-local skills;
-4. generates Korean seat identities only when the registry does not exist;
-5. validates role-specific context profiles and compiles eight `.codex/agents/*.toml` files;
-6. generates `.codex/config.toml` with the persisted Serena HTTP endpoint, Sequential Thinking, the current seat assignment comments, and `agents.max_threads = 8`;
-7. initializes `.agent-team/state/agent-team.db`.
+The setup batch does not provision a missing MCP dependency. `init_agent_team.py` exposes separated `--install-mcp-dependencies`, `--check-mcp-dependencies`, and `--configure-mcp` operations. Its ordinary core initialization verifies Python dependencies, synchronizes all project-local skills and agents, generates `.codex/config.toml`, and initializes `.agent-team/state/agent-team.db`; it does not run `serena init` or `serena config edit`.
 
 Repeated execution is safe and preserves existing seat identities.
 

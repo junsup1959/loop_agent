@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-from http.client import HTTPConnection, HTTPException
 from importlib import metadata
 import json
 import os
@@ -61,26 +60,31 @@ except ModuleNotFoundError:
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RUNTIME_ROOT = PROJECT_ROOT / ".agent-team"
 CODEX_CONFIG_PATH = PROJECT_ROOT / ".codex" / "config.toml"
+GITIGNORE_PATH = PROJECT_ROOT / ".gitignore"
 TEAM_CONFIG_PATH = PROJECT_ROOT / "config" / "agent-team" / "team.toml"
 PYTHON_REQUIREMENTS_PATH = PROJECT_ROOT / "scripts" / "requirements.txt"
 LEGACY_MCP_PACKAGE_PATH = PROJECT_ROOT / "mcp-package"
 SEQUENTIAL_THINKING_PACKAGE = "@modelcontextprotocol/server-sequential-thinking"
 SEQUENTIAL_THINKING_VERSION = "2026.7.4"
-SEQUENTIAL_THINKING_ENTRYPOINT = (
-    "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"
-)
+SEQUENTIAL_THINKING_PACKAGE_PATH = Path("@modelcontextprotocol") / "server-sequential-thinking"
+SEQUENTIAL_THINKING_ENTRYPOINT = Path("dist") / "index.js"
 MAX_AGENT_THREADS = 8
 MANAGED_CONFIG_MARKER = "# agent-team-managed: init_agent_team.py"
+GITIGNORE_BEGIN_MARKER = "# >>> agent-team-managed: project-local-tools >>>"
+GITIGNORE_END_MARKER = "# <<< agent-team-managed: project-local-tools <<<"
+GITIGNORE_ENTRIES = (
+    "/.agents/",
+    "/.agent-team/",
+    "/.codex/",
+    "/.claude/",
+    "/.npm-cache/",
+)
 MCP_CAPABILITIES_FILE_NAME = "mcp-capabilities.json"
 SUPPORTED_MCP_CAPABILITIES = frozenset({"serena", "sequentialthinking"})
-MCP_PROBE_ID = "agent-team-initializer-probe"
-MCP_PROTOCOL_VERSION = "2025-03-26"
 RUNTIME_DIRECTORIES = (
     "state",
     "worktrees",
     "build",
-    "mcp",
-    "npm-cache",
     "artifacts/contexts",
     "artifacts/results",
     "artifacts/builds",
@@ -205,188 +209,96 @@ def _command_path(command: str) -> str:
     return resolved
 
 
-def _ensure_serena_initialized() -> dict[str, Any]:
-    """Verify setup performed by the project-local Serena setup skill."""
-    return _check_serena_initialized()
+def _gitignore_newline(value: str) -> str:
+    return "\r\n" if "\r\n" in value else "\n"
 
 
-def _close_mcp_session(host: str, port: int, endpoint_path: str, session_id: str) -> None:
-    connection: HTTPConnection | None = None
-    try:
-        connection = HTTPConnection(host, port, timeout=0.75)
-        connection.request("DELETE", endpoint_path, headers={"Mcp-Session-Id": session_id})
-        response = connection.getresponse()
-        response.read()
-    except (HTTPException, OSError):
-        return
-    finally:
-        if connection is not None:
-            connection.close()
-
-
-def _mcp_endpoint_is_ready(host: str, port: int, endpoint_path: str) -> bool:
-    payload = {
-        "jsonrpc": "2.0",
-        "id": MCP_PROBE_ID,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": MCP_PROTOCOL_VERSION,
-            "capabilities": {},
-            "clientInfo": {"name": "agent-team-initializer", "version": "1"},
-        },
-    }
-    connection: HTTPConnection | None = None
-    session_id: str | None = None
-    try:
-        connection = HTTPConnection(host, port, timeout=0.75)
-        connection.request(
-            "POST",
-            endpoint_path,
-            body=json.dumps(payload),
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            },
+def _managed_gitignore_block(newline: str) -> str:
+    return newline.join(
+        (
+            GITIGNORE_BEGIN_MARKER,
+            *GITIGNORE_ENTRIES,
+            GITIGNORE_END_MARKER,
+            "",
         )
-        response = connection.getresponse()
-        session_id = response.getheader("Mcp-Session-Id")
-        response_payload = json.loads(response.read().decode("utf-8"))
-        return (
-            response.status == 200
-            and isinstance(response_payload, dict)
-            and response_payload.get("jsonrpc") == "2.0"
-            and response_payload.get("id") == MCP_PROBE_ID
-            and isinstance(response_payload.get("result"), dict)
-        )
-    except (HTTPException, OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return False
-    finally:
-        if connection is not None:
-            connection.close()
-        if session_id:
-            _close_mcp_session(host, port, endpoint_path, session_id)
-
-
-def _check_serena_initialized() -> dict[str, Any]:
-    executable = _command_path("serena")
-    project_config = PROJECT_ROOT / ".serena" / "project.yml"
-    if not project_config.is_file():
-        raise InitializationError(
-            "Missing project Serena configuration. Run the project-local "
-            "serena-project-setup skill before initializing the team."
-        )
-    project_text = project_config.read_text(encoding="utf-8")
-    if re.search(r"(?m)^languages:\s*\[\s*\]\s*$", project_text):
-        raise InitializationError(
-            "Serena project languages are not configured. Use the project-local "
-            "serena-project-setup skill to set languages and index the project."
-        )
-    maintenance = PROJECT_ROOT / ".serena" / "memories" / "memory_maintenance.md"
-    if not maintenance.is_file():
-        raise InitializationError(
-            "Serena memory layout is not initialized. Run 'serena memories initialize' "
-            "through the project-local serena-project-setup skill."
-        )
-    return {
-        "command": executable,
-        "initialized_now": False,
-        "project_config": str(project_config),
-        "setup_owner": "project-local serena-project-setup skill",
-    }
-
-
-def _load_serena_service_endpoint_from_path(
-    config_path: Path, runtime_root: Path
-) -> dict[str, Any]:
-    try:
-        with config_path.open("rb") as stream:
-            data = tomllib.load(stream)
-    except tomllib.TOMLDecodeError as exc:
-        raise InitializationError(f"Invalid Serena service TOML: {config_path}: {exc}") from exc
-    service = data.get("service")
-    if not isinstance(service, dict) or service.get("version") != 1:
-        raise InitializationError("Serena service configuration must declare version = 1.")
-    if service.get("transport") != "streamable-http":
-        raise InitializationError("Serena service transport must be streamable-http.")
-    if service.get("port_strategy") != "random_persisted":
-        raise InitializationError("Serena service port strategy must be random_persisted.")
-    host = service.get("host")
-    endpoint_path = service.get("endpoint_path")
-    state_file = service.get("state_file")
-    if host not in {"127.0.0.1", "localhost", "::1"}:
-        raise InitializationError("Serena service host must be a loopback address.")
-    if not isinstance(endpoint_path, str) or not endpoint_path.startswith("/"):
-        raise InitializationError("Serena service endpoint_path must start with '/'.")
-    if not isinstance(state_file, str) or not state_file:
-        raise InitializationError("Serena service state_file must be a relative path.")
-    state_path = _inside_project(PROJECT_ROOT / state_file)
-    expected_state_path = _inside_project(runtime_root / "state" / "serena-service.json")
-    if state_path != expected_state_path:
-        raise InitializationError(
-            "Serena service state_file must match the selected runtime root: "
-            f"expected {expected_state_path}, actual {state_path}"
-        )
-    if not state_path.is_file():
-        raise InitializationError(
-            "Shared Serena HTTP service state is missing. Run the project-local "
-            "serena-project-setup skill before initializing or refreshing MCP config."
-        )
-    try:
-        state = json.loads(state_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise InitializationError(f"Invalid Serena service state JSON: {state_path}") from exc
-    if not isinstance(state, dict) or state.get("version") != 1:
-        raise InitializationError("Serena service state has an unsupported schema.")
-    port = state.get("port")
-    if not isinstance(port, int) or port < 1024 or port > 65535:
-        raise InitializationError("Serena service state must contain an unprivileged TCP port.")
-    expected_url = f"http://{host}:{port}{endpoint_path}"
-    if state.get("url") != expected_url:
-        raise InitializationError(
-            "Serena service URL does not match the configured loopback endpoint."
-        )
-    if state.get("transport") != "streamable-http":
-        raise InitializationError("Serena service state must use streamable-http.")
-    if state.get("health_status") != "passed" or not isinstance(
-        state.get("health_checked_at"), str
-    ):
-        raise InitializationError(
-            "Shared Serena HTTP service has no successful health-check record. Run the "
-            "project-local serena-project-setup skill before initializing the team."
-        )
-    if not isinstance(state.get("project_path"), str) or not state["project_path"]:
-        raise InitializationError("Serena service state must name its active project path.")
-    try:
-        active_project = Path(state["project_path"]).resolve()
-    except OSError as exc:
-        raise InitializationError("Serena service state has an invalid active project path.") from exc
-    if active_project != PROJECT_ROOT:
-        raise InitializationError(
-            "Shared Serena HTTP service targets a different project. Run the project-local "
-            "serena-project-setup skill to start the service for this project."
-        )
-    if not _mcp_endpoint_is_ready(host, port, endpoint_path):
-        raise InitializationError(
-            "Shared Serena HTTP service is not a ready Streamable MCP endpoint. Run the "
-            "project-local serena-project-setup skill to start or repair it."
-        )
-    return {
-        "config_path": str(config_path),
-        "state_path": str(state_path),
-        "url": expected_url,
-        "host": host,
-        "port": port,
-        "project_path": state["project_path"],
-        "pid": state.get("pid"),
-    }
-
-
-def _load_serena_service_endpoint(
-    agent_bundle: dict[str, Any], runtime_root: Path
-) -> dict[str, Any]:
-    return _load_serena_service_endpoint_from_path(
-        agent_bundle["serena_service_path"], runtime_root
     )
+
+
+def _ensure_gitignore() -> dict[str, Any]:
+    """Append or replace only the Agent Team-owned .gitignore block."""
+
+    if GITIGNORE_PATH.exists() and not GITIGNORE_PATH.is_file():
+        raise InitializationError(f"Git ignore path is not a file: {GITIGNORE_PATH}")
+    if GITIGNORE_PATH.is_file():
+        with GITIGNORE_PATH.open("r", encoding="utf-8", newline="") as stream:
+            current = stream.read()
+    else:
+        current = ""
+    newline = _gitignore_newline(current)
+    begin_count = current.count(GITIGNORE_BEGIN_MARKER)
+    end_count = current.count(GITIGNORE_END_MARKER)
+    if begin_count != end_count or begin_count > 1:
+        raise InitializationError(
+            "Cannot safely update .gitignore because the Agent Team marker block is incomplete "
+            f"or duplicated: {GITIGNORE_PATH}"
+        )
+
+    block = _managed_gitignore_block(newline)
+    if begin_count == 0:
+        separator = ""
+        if current:
+            if not current.endswith(("\n", "\r")):
+                separator += newline
+            if not current.endswith(("\n\n", "\r\n\r\n")):
+                separator += newline
+        expected = current + separator + block
+    else:
+        begin = current.find(GITIGNORE_BEGIN_MARKER)
+        end = current.find(GITIGNORE_END_MARKER, begin)
+        if end < begin:
+            raise InitializationError(
+                f"Cannot safely update .gitignore marker order: {GITIGNORE_PATH}"
+            )
+        line_end = current.find("\n", end)
+        block_end = len(current) if line_end == -1 else line_end + 1
+        expected = current[:begin] + block + current[block_end:]
+
+    updated = expected != current
+    if updated:
+        GITIGNORE_PATH.write_text(expected, encoding="utf-8", newline="")
+    return {
+        "path": str(GITIGNORE_PATH),
+        "updated": updated,
+        "entries": list(GITIGNORE_ENTRIES),
+    }
+
+
+def _serena_stdio_args() -> list[str]:
+    """Return the project-scoped Serena command arguments used by Codex."""
+
+    return [
+        "start-mcp-server",
+        "--project-from-cwd",
+        "--context",
+        "codex",
+        "--transport",
+        "stdio",
+        "--enable-web-dashboard",
+        "false",
+        "--open-web-dashboard",
+        "false",
+    ]
+
+
+def _serena_stdio_capability() -> dict[str, Any]:
+    """Verify the executable used by the local stdio Serena MCP server."""
+
+    return {
+        "transport": "stdio",
+        "command": _command_path("serena"),
+        "args": _serena_stdio_args(),
+        "cwd": str(PROJECT_ROOT),
+    }
 
 
 def _pinned_python_requirements() -> dict[str, str]:
@@ -501,43 +413,40 @@ def _check_python_dependencies() -> dict[str, Any]:
     }
 
 
-def _sequential_thinking_paths(runtime_root: Path) -> dict[str, Path]:
-    mcp_root = _inside_project(runtime_root / "mcp")
+def _npm_command() -> str:
+    return _command_path("npm.cmd" if os.name == "nt" else "npm")
+
+
+def _global_npm_root() -> Path:
+    completed = _run_checked([_npm_command(), "root", "--global"])
+    roots = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    if len(roots) != 1:
+        raise InitializationError(
+            "npm root --global did not return exactly one global module directory."
+        )
+    root = Path(roots[0])
+    if not root.is_absolute():
+        raise InitializationError(f"npm global module directory is not absolute: {root}")
+    return root
+
+
+def _sequential_thinking_paths() -> dict[str, Path]:
+    package_root = _global_npm_root() / SEQUENTIAL_THINKING_PACKAGE_PATH
     return {
-        "root": mcp_root,
-        "manifest": _inside_project(mcp_root / "package.json"),
-        "entrypoint": _inside_project(mcp_root / SEQUENTIAL_THINKING_ENTRYPOINT),
-        "package_manifest": _inside_project(
-            mcp_root
-            / "node_modules"
-            / "@modelcontextprotocol"
-            / "server-sequential-thinking"
-            / "package.json"
-        ),
-        "cache": _inside_project(runtime_root / "npm-cache"),
+        "root": package_root,
+        "entrypoint": package_root / SEQUENTIAL_THINKING_ENTRYPOINT,
+        "package_manifest": package_root / "package.json",
     }
 
 
-def _sequential_thinking_manifest() -> str:
-    data = {
-        "name": "agent-team-runtime-mcp",
-        "private": True,
-        "version": "1.0.0",
-        "dependencies": {
-            SEQUENTIAL_THINKING_PACKAGE: SEQUENTIAL_THINKING_VERSION,
-        },
-    }
-    return json.dumps(data, indent=2) + "\n"
-
-
-def _check_sequential_thinking(runtime_root: Path) -> dict[str, Any]:
+def _check_sequential_thinking() -> dict[str, Any]:
     if LEGACY_MCP_PACKAGE_PATH.exists():
         raise InitializationError(
             "Legacy mcp-package directory must be removed before verification: "
             f"{LEGACY_MCP_PACKAGE_PATH}"
         )
-    paths = _sequential_thinking_paths(runtime_root)
-    for label in ("manifest", "package_manifest", "entrypoint"):
+    paths = _sequential_thinking_paths()
+    for label in ("package_manifest", "entrypoint"):
         if not paths[label].is_file():
             raise InitializationError(
                 f"Sequential Thinking {label} is missing: {paths[label]}"
@@ -564,43 +473,59 @@ def _check_sequential_thinking(runtime_root: Path) -> dict[str, Any]:
     }
 
 
-def _ensure_sequential_thinking(runtime_root: Path) -> dict[str, Any]:
+def _ensure_sequential_thinking() -> dict[str, Any]:
     if LEGACY_MCP_PACKAGE_PATH.exists():
         raise InitializationError(
             "Legacy mcp-package directory must be removed before initialization: "
             f"{LEGACY_MCP_PACKAGE_PATH}"
         )
-    paths = _sequential_thinking_paths(runtime_root)
-    paths["root"].mkdir(parents=True, exist_ok=True)
-    paths["cache"].mkdir(parents=True, exist_ok=True)
-    expected_manifest = _sequential_thinking_manifest()
-    manifest_changed = (
-        not paths["manifest"].is_file()
-        or paths["manifest"].read_text(encoding="utf-8") != expected_manifest
-    )
-    if manifest_changed:
-        paths["manifest"].write_text(expected_manifest, encoding="utf-8", newline="\n")
     try:
-        return _check_sequential_thinking(runtime_root)
+        return _check_sequential_thinking()
     except InitializationError:
-        npm = _command_path("npm.cmd" if os.name == "nt" else "npm")
         _run_checked(
             [
-                npm,
-                "--cache",
-                str(paths["cache"]),
+                _npm_command(),
                 "install",
-                "--prefix",
-                str(paths["root"]),
+                "--global",
                 "--no-audit",
                 "--no-fund",
                 "--ignore-scripts",
                 f"{SEQUENTIAL_THINKING_PACKAGE}@{SEQUENTIAL_THINKING_VERSION}",
             ]
         )
-    result = _check_sequential_thinking(runtime_root)
+    result = _check_sequential_thinking()
     result["installed_now"] = True
     return result
+
+
+def install_mcp_dependencies(runtime_root: Path) -> dict[str, Any]:
+    """Install MCP executable dependencies without enabling Codex MCP configuration."""
+
+    gitignore = _ensure_gitignore()
+    serena = _command_path("serena")
+    sequential = _ensure_sequential_thinking()
+    return {
+        "status": "ok",
+        "operation": "install-mcp-dependencies",
+        "runtime_root": str(runtime_root),
+        "gitignore": gitignore,
+        "serena_cli": serena,
+        "sequentialthinking": sequential,
+    }
+
+
+def check_mcp_dependencies(runtime_root: Path) -> dict[str, Any]:
+    """Strictly verify MCP executable dependencies without changing configuration."""
+
+    serena = _command_path("serena")
+    sequential = _check_sequential_thinking()
+    return {
+        "status": "ok",
+        "operation": "check-mcp-dependencies",
+        "runtime_root": str(runtime_root),
+        "serena_cli": serena,
+        "sequentialthinking": sequential,
+    }
 
 
 def _mcp_capabilities_path(runtime_root: Path) -> Path:
@@ -608,7 +533,7 @@ def _mcp_capabilities_path(runtime_root: Path) -> Path:
 
 
 def _default_mcp_capabilities() -> dict[str, Any]:
-    return {"version": 1, "enabled": [], "serena": {"last_url": None}}
+    return {"version": 1, "enabled": [], "serena": {"transport": "stdio"}}
 
 
 def _normalize_mcp_capabilities(value: Any) -> dict[str, Any]:
@@ -624,12 +549,12 @@ def _normalize_mcp_capabilities(value: Any) -> dict[str, Any]:
     serena = value.get("serena", {})
     if not isinstance(serena, dict):
         raise InitializationError("MCP capability state has an invalid Serena section.")
-    last_url = serena.get("last_url")
-    if last_url is not None and (not isinstance(last_url, str) or not last_url):
-        raise InitializationError("MCP capability state has an invalid Serena last_url.")
-    if "serena" in enabled and last_url is None:
-        raise InitializationError("Enabled Serena capability requires a persisted last_url.")
-    return {"version": 1, "enabled": sorted(enabled), "serena": {"last_url": last_url}}
+    transport = serena.get("transport")
+    if transport is not None and not isinstance(transport, str):
+        raise InitializationError("MCP capability state has an invalid Serena transport.")
+    # Version 1 may contain a legacy endpoint shape. Normalize every valid
+    # prior shape to the project-local stdio contract.
+    return {"version": 1, "enabled": sorted(enabled), "serena": {"transport": "stdio"}}
 
 
 def _read_mcp_capabilities(runtime_root: Path, *, required: bool) -> dict[str, Any]:
@@ -672,11 +597,6 @@ def _migrate_mcp_capabilities(runtime_root: Path) -> dict[str, Any]:
         return state
     enabled = sorted(name for name in servers if name in SUPPORTED_MCP_CAPABILITIES)
     state["enabled"] = enabled
-    serena = servers.get("serena")
-    if isinstance(serena, dict) and isinstance(serena.get("url"), str) and serena["url"]:
-        state["serena"]["last_url"] = serena["url"]
-    if "serena" in enabled and state["serena"]["last_url"] is None:
-        state["enabled"] = [name for name in enabled if name != "serena"]
     return _normalize_mcp_capabilities(state)
 
 
@@ -685,14 +605,6 @@ def _ensure_mcp_capabilities_state(runtime_root: Path) -> dict[str, Any]:
     if path.is_file():
         return _read_mcp_capabilities(runtime_root, required=True)
     return _write_mcp_capabilities(runtime_root, _migrate_mcp_capabilities(runtime_root))
-
-
-def _probe_serena_capability(
-    agent_bundle: dict[str, Any], runtime_root: Path
-) -> dict[str, Any]:
-    _check_serena_initialized()
-    _check_serena_knowledge_policy(agent_bundle)
-    return _load_serena_service_endpoint(agent_bundle, runtime_root)
 
 
 def _check_enabled_mcp_capability(
@@ -705,14 +617,9 @@ def _check_enabled_mcp_capability(
     if name not in state["enabled"]:
         raise InitializationError(f"MCP capability is not enabled: {name}")
     if name == "serena":
-        service = _probe_serena_capability(agent_bundle, runtime_root)
-        if service["url"] != state["serena"]["last_url"]:
-            raise InitializationError(
-                "Serena endpoint changed. Run --refresh-mcp-config to persist the new URL."
-            )
-        return {"name": name, "available": True, "url": service["url"]}
+        return {"name": name, "available": True, **_serena_stdio_capability()}
     if name == "sequentialthinking":
-        sequential = _check_sequential_thinking(runtime_root)
+        sequential = _check_sequential_thinking()
         return {"name": name, "available": True, **sequential}
     raise InitializationError(f"Unsupported MCP capability: {name}")
 
@@ -777,13 +684,12 @@ def _render_codex_config(
         "",
     ]
     if "serena" in mcp_capabilities["enabled"]:
-        last_url = mcp_capabilities["serena"]["last_url"]
-        if not isinstance(last_url, str) or not last_url:
-            raise InitializationError("Enabled Serena capability has no persisted URL.")
         lines.extend(
             [
                 "[mcp_servers.serena]",
-                "url = " + _toml_string(last_url),
+                'command = "serena"',
+                "args = " + _toml_string_list(_serena_stdio_args()),
+                "cwd = " + _toml_string(project_cwd),
                 "enabled = true",
                 "required = false",
                 "startup_timeout_sec = 45",
@@ -792,7 +698,7 @@ def _render_codex_config(
             ]
         )
     if "sequentialthinking" in mcp_capabilities["enabled"]:
-        sequential_paths = _sequential_thinking_paths(runtime_root)
+        sequential_paths = _sequential_thinking_paths()
         lines.extend(
             [
                 "[mcp_servers.sequentialthinking]",
@@ -872,6 +778,17 @@ def _check_codex_config(
         if not isinstance(server, dict) or server.get("required") is not False:
             raise InitializationError(
                 f"Recommended MCP server {name!r} must set required = false."
+            )
+    if "serena" in expected_mcp_servers:
+        serena = mcp_servers["serena"]
+        if (
+            serena.get("command") != "serena"
+            or serena.get("args") != _serena_stdio_args()
+            or serena.get("cwd") != str(PROJECT_ROOT)
+            or "url" in serena
+        ):
+            raise InitializationError(
+                "Serena MCP must use the project-local stdio command contract."
             )
 
 
@@ -1093,11 +1010,11 @@ def enable_mcp(runtime_root: Path, names: Sequence[str]) -> dict[str, Any]:
     provisioned: dict[str, Any] = {}
     for name in names:
         if name == "serena":
-            service = _probe_serena_capability(agent_bundle, runtime_root)
-            state["serena"]["last_url"] = service["url"]
-            provisioned[name] = {"available": True, "url": service["url"]}
+            serena = _serena_stdio_capability()
+            state["serena"] = {"transport": "stdio"}
+            provisioned[name] = {"available": True, **serena}
         elif name == "sequentialthinking":
-            provisioned[name] = {"available": True, **_ensure_sequential_thinking(runtime_root)}
+            provisioned[name] = {"available": True, **_ensure_sequential_thinking()}
         else:
             raise InitializationError(f"Unsupported MCP capability: {name}")
         enabled.add(name)
@@ -1110,6 +1027,40 @@ def enable_mcp(runtime_root: Path, names: Sequence[str]) -> dict[str, Any]:
         "codex_config": str(CODEX_CONFIG_PATH),
         "mcp_capabilities": state,
         "provisioned": provisioned,
+    }
+
+
+def configure_mcp(runtime_root: Path, names: Sequence[str]) -> dict[str, Any]:
+    """Enable already-installed MCP dependencies without provisioning them."""
+
+    _check_runtime_layout(runtime_root)
+    agent_bundle = load_and_validate_agents()
+    _check_agent_mirror(agent_bundle)
+    state = _read_mcp_capabilities(runtime_root, required=True)
+    enabled = set(state["enabled"])
+    configured: dict[str, Any] = {}
+    for name in names:
+        if name == "serena":
+            serena = _serena_stdio_capability()
+            state["serena"] = {"transport": "stdio"}
+            configured[name] = {"available": True, **serena}
+        elif name == "sequentialthinking":
+            configured[name] = {
+                "available": True,
+                **_check_sequential_thinking(),
+            }
+        else:
+            raise InitializationError(f"Unsupported MCP capability: {name}")
+        enabled.add(name)
+    state["enabled"] = sorted(enabled)
+    state = _write_mcp_capabilities(runtime_root, state)
+    _ensure_codex_config(agent_bundle, runtime_root, state)
+    return {
+        "status": "ok",
+        "operation": "configure-mcp",
+        "codex_config": str(CODEX_CONFIG_PATH),
+        "mcp_capabilities": state,
+        "configured": configured,
     }
 
 
@@ -1155,13 +1106,13 @@ def check_mcp(runtime_root: Path, names: Sequence[str]) -> dict[str, Any]:
 
 
 def refresh_mcp_config(runtime_root: Path) -> dict[str, Any]:
-    """Refresh the persisted Serena URL for an explicitly enabled capability."""
+    """Regenerate the project-local stdio Serena configuration."""
     agent_bundle = load_and_validate_agents()
     state = _read_mcp_capabilities(runtime_root, required=True)
     if "serena" not in state["enabled"]:
         raise InitializationError("Serena MCP is not enabled. Use --enable-mcp serena first.")
-    service = _probe_serena_capability(agent_bundle, runtime_root)
-    state["serena"]["last_url"] = service["url"]
+    serena = _serena_stdio_capability()
+    state["serena"] = {"transport": "stdio"}
     state = _write_mcp_capabilities(runtime_root, state)
     _ensure_codex_config(agent_bundle, runtime_root, state)
     return {
@@ -1169,7 +1120,7 @@ def refresh_mcp_config(runtime_root: Path) -> dict[str, Any]:
         "operation": "refresh-mcp-config",
         "codex_config": str(CODEX_CONFIG_PATH),
         "mcp_capabilities": state,
-        "serena_service": service,
+        "serena": serena,
     }
 
 
@@ -1187,9 +1138,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify the initialized control plane without modifying it.",
     )
     parser.add_argument(
+        "--install-mcp-dependencies",
+        action="store_true",
+        help="Install Serena/Sequential Thinking dependencies without enabling Codex MCP configuration.",
+    )
+    parser.add_argument(
+        "--check-mcp-dependencies",
+        action="store_true",
+        help="Verify Serena/Sequential Thinking dependencies without changing configuration.",
+    )
+    parser.add_argument(
         "--refresh-mcp-config",
         action="store_true",
-        help="Refresh the persisted URL for the explicitly enabled Serena MCP capability.",
+        help="Regenerate the explicitly enabled project-local Serena stdio MCP configuration.",
+    )
+    parser.add_argument(
+        "--configure-mcp",
+        action="append",
+        choices=sorted(SUPPORTED_MCP_CAPABILITIES),
+        help="Enable an already-installed MCP dependency. Repeat for multiple capabilities.",
     )
     parser.add_argument(
         "--enable-mcp",
@@ -1249,7 +1216,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             bool(value)
             for value in (
                 args.check,
+                args.install_mcp_dependencies,
+                args.check_mcp_dependencies,
                 args.refresh_mcp_config,
+                args.configure_mcp,
                 args.enable_mcp,
                 args.disable_mcp,
                 args.check_mcp,
@@ -1257,18 +1227,46 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if selected_operations > 1:
             raise InitializationError(
-                "Use only one of --check, --refresh-mcp-config, --enable-mcp, "
-                "--disable-mcp, or --check-mcp per invocation."
+                "Use only one of --check, --install-mcp-dependencies, "
+                "--check-mcp-dependencies, --refresh-mcp-config, --configure-mcp, "
+                "--enable-mcp, --disable-mcp, or --check-mcp per invocation."
             )
         runtime_root = _resolve_runtime_root(args.runtime_root)
-        if args.refresh_mcp_config:
+        if args.install_mcp_dependencies:
+            result = install_mcp_dependencies(runtime_root)
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(
+                    "Agent team MCP dependencies installed: "
+                    f"Sequential Thinking={result['sequentialthinking']['version']}"
+                )
+        elif args.check_mcp_dependencies:
+            result = check_mcp_dependencies(runtime_root)
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(
+                    "Agent team MCP dependency check passed: "
+                    f"Sequential Thinking={result['sequentialthinking']['version']}"
+                )
+        elif args.refresh_mcp_config:
             result = refresh_mcp_config(runtime_root)
             if args.json:
                 print(json.dumps(result, ensure_ascii=False, indent=2))
             else:
                 print(
                     "Agent team recommended MCP configuration refreshed: "
-                    f"Serena={result['serena_service']['url']}"
+                    f"Serena={result['serena']['command']} (stdio)"
+                )
+        elif args.configure_mcp:
+            result = configure_mcp(runtime_root, args.configure_mcp)
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(
+                    "Agent team MCP capabilities configured: "
+                    f"enabled={','.join(result['mcp_capabilities']['enabled']) or 'none'}"
                 )
         elif args.enable_mcp:
             result = enable_mcp(runtime_root, args.enable_mcp)

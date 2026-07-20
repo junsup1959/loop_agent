@@ -48,12 +48,6 @@ eligible_roles = ["pl"]
 summary = "Configure, index, verify, and host Serena before the team starts."
 
 [[skills]]
-id = "agent-team-bootstrap"
-kind = "workflow"
-eligible_roles = ["pl"]
-summary = "Install Serena and the local agent team in the required order."
-
-[[skills]]
 id = "review-solution-architecture"
 kind = "workflow"
 eligible_roles = ["pl", "ta", "dev_1", "dev_2", "dev_3", "qa_sdet"]

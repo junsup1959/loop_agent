@@ -7,7 +7,6 @@ runtime_root = ".codex/agents"
 skill_catalog = ".agents/skills/catalog.toml"
 context_profiles = "config/agent-team/context-profiles.toml"
 serena_knowledge_policy = "config/agent-team/serena-knowledge-policy.toml"
-serena_service = "config/agent-team/serena-service.toml"
 activation_instructions = "config/agent-team/activation-instructions.md"
 max_activation_instruction_chars = 4000
 recommended_tools = "config/agent-team/recommended-tools.md"
