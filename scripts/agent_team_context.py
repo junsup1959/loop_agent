@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import tomllib
 from collections.abc import Mapping, Sequence
@@ -11,6 +12,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:
+    from .agent_team_layout import AgentTeamLayout
+    from .agent_team_profiles import PROFESSIONAL_SKILL_ID
     from .agent_team_queue import SQLiteMessageQueue
     from .project_agents import (
         AgentConfigurationError,
@@ -18,6 +21,8 @@ try:
         resolve_binding,
     )
 except ImportError:
+    from agent_team_layout import AgentTeamLayout
+    from agent_team_profiles import PROFESSIONAL_SKILL_ID
     from agent_team_queue import SQLiteMessageQueue
     from project_agents import (
         AgentConfigurationError,
@@ -26,8 +31,9 @@ except ImportError:
     )
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CONTEXT_PROFILE_PATH = PROJECT_ROOT / "agents" / "context-profiles.toml"
+LAYOUT = AgentTeamLayout.discover(Path(__file__))
+PROJECT_ROOT = LAYOUT.source_root
+CONTEXT_PROFILE_PATH = LAYOUT.config_root / "context-profiles.toml"
 PROFILE_INTEGER_FIELDS = {
     "expansion_level",
     "max_messages",
@@ -76,6 +82,9 @@ ACTION_PAYLOAD_KEYS = {
     "task",
     "work_contract",
 }
+SERENA_MEMORY_NAMES = frozenset(
+    {"core", "tech_stack", "suggested_commands", "conventions", "task_completion"}
+)
 
 
 class ContextSelectionError(ValueError):
@@ -139,20 +148,34 @@ class ContextProfileCatalog:
         with self.path.open("rb") as stream:
             data = tomllib.load(stream)
         context = data.get("context")
-        role_defaults = data.get("role_defaults")
+        professional_profile = data.get("professional_profile")
+        role_defaults = data.get("capability_defaults")
         profiles = data.get("profiles")
-        if not isinstance(context, dict) or context.get("version") != 1:
-            raise ContextSelectionError("Context profile catalog must declare version = 1.")
+        if not isinstance(context, dict) or context.get("version") != 2:
+            raise ContextSelectionError("Context profile catalog must declare version = 2.")
         if not isinstance(role_defaults, dict) or not role_defaults:
-            raise ContextSelectionError("Context profile catalog must define role_defaults.")
+            raise ContextSelectionError("Context profile catalog must define capability_defaults.")
         if not isinstance(profiles, dict) or not profiles:
             raise ContextSelectionError("Context profile catalog must define profiles.")
+        expected_professional_profile = {
+            "runtime_skill_id": PROFESSIONAL_SKILL_ID,
+            "compiled_binding_required": True,
+            "minimum_reference_count": 4,
+            "maximum_reference_count": 5,
+            "model_selection_allowed": False,
+            "authority_expansion_allowed": False,
+        }
+        if professional_profile != expected_professional_profile:
+            raise ContextSelectionError(
+                "Context profile catalog has an invalid professional-profile policy."
+            )
 
         self.default_profile = context.get("default_profile", "auto")
         if not isinstance(self.default_profile, str) or not self.default_profile:
             raise ContextSelectionError("context.default_profile must be a non-empty string.")
         self.role_defaults = self._validate_role_defaults(role_defaults, profiles)
         self.profiles = self._validate_profiles(profiles)
+        self.professional_profile = professional_profile
 
     @staticmethod
     def _validate_role_defaults(
@@ -185,16 +208,16 @@ class ContextProfileCatalog:
                 raise ContextSelectionError("Context profile names must be non-empty strings.")
             if not isinstance(raw, dict):
                 raise ContextSelectionError(f"Context profile {profile!r} must be a table.")
-            roles = raw.get("roles")
+            roles = raw.get("capabilities")
             if (
                 not isinstance(roles, list)
                 or not roles
                 or not all(isinstance(role, str) and role for role in roles)
             ):
                 raise ContextSelectionError(
-                    f"Context profile {profile!r} must declare one or more roles."
+                    f"Context profile {profile!r} must declare one or more capabilities."
                 )
-            unknown_fields = set(raw) - {"roles", *PROFILE_INTEGER_FIELDS}
+            unknown_fields = set(raw) - {"capabilities", *PROFILE_INTEGER_FIELDS}
             if unknown_fields:
                 raise ContextSelectionError(
                     f"Context profile {profile!r} has unknown fields: "
@@ -694,6 +717,204 @@ def _project_relative_path(value: str) -> Path:
     return candidate
 
 
+def _compiled_professional_profile_binding(
+    *,
+    actor_seat_id: str | None,
+    compiled_profile_ref: str | Path | None,
+    compiled_profile_digest: str | None,
+    skill_packet: Mapping[str, Any],
+) -> dict[str, str] | None:
+    professional_skills = [
+        skill
+        for skill in skill_packet.get("skills", [])
+        if isinstance(skill, Mapping) and skill.get("kind") == "professional"
+    ]
+    if actor_seat_id is None:
+        if compiled_profile_ref is not None or compiled_profile_digest is not None:
+            raise ContextSelectionError(
+                "compiled professional profile requires actor_seat_id."
+            )
+        if professional_skills:
+            raise ContextSelectionError(
+                "professional runtime skill requires actor_seat_id."
+            )
+        return None
+    if len(professional_skills) != 1 or (
+        professional_skills[0].get("id") != PROFESSIONAL_SKILL_ID
+    ):
+        raise ContextSelectionError(
+            "Every seat activation must contain exactly one "
+            "professional-profile-runtime skill."
+        )
+    if compiled_profile_ref is None or compiled_profile_digest is None:
+        raise ContextSelectionError(
+            "Seat activation requires one compiled professional profile "
+            "reference and digest."
+        )
+    if not isinstance(compiled_profile_digest, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", compiled_profile_digest
+    ):
+        raise ContextSelectionError(
+            "compiled_profile_digest must be a lowercase SHA-256 digest."
+        )
+    try:
+        profile_path = Path(compiled_profile_ref).expanduser().resolve(strict=True)
+    except (FileNotFoundError, OSError) as exc:
+        raise ContextSelectionError(
+            f"Compiled professional profile is missing: {compiled_profile_ref}"
+        ) from exc
+    if not profile_path.is_file():
+        raise ContextSelectionError(
+            f"Compiled professional profile is not a file: {profile_path}"
+        )
+    raw = profile_path.read_bytes()
+    observed_digest = hashlib.sha256(raw).hexdigest()
+    if observed_digest != compiled_profile_digest:
+        raise ContextSelectionError(
+            "Compiled professional profile digest does not match its bytes."
+        )
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ContextSelectionError(
+            "Compiled professional profile must be valid UTF-8 JSON."
+        ) from exc
+    if not isinstance(document, dict) or document.get(
+        "professional_skill_id"
+    ) != PROFESSIONAL_SKILL_ID:
+        raise ContextSelectionError(
+            "Compiled professional profile has the wrong runtime skill binding."
+        )
+    references = document.get("references")
+    if not isinstance(references, list) or not 4 <= len(references) <= 5:
+        raise ContextSelectionError(
+            "Compiled professional profile must contain four or five references."
+        )
+    return {
+        "skill_id": PROFESSIONAL_SKILL_ID,
+        "compiled_profile_ref": str(profile_path),
+        "compiled_profile_digest": compiled_profile_digest,
+    }
+
+
+def _compiled_runtime_binding(
+    value: Mapping[str, Any] | None,
+    *,
+    actor_seat_id: str | None,
+    target_role: str,
+    verified_base_oid: str,
+    verified_head_oid: str,
+) -> dict[str, Any] | None:
+    """Validate the dynamic worktree authority copied into runner context."""
+
+    if value is None:
+        # Context compilation is also used for non-executing planning packets.
+        # AgentRuntime rejects a packet without this binding at execution time.
+        return None
+    if actor_seat_id is None:
+        raise ContextSelectionError("runtime_binding requires actor_seat_id.")
+    required = {
+        "activation_id",
+        "workspace_id",
+        "lease_id",
+        "sandbox_id",
+        "execution_kind",
+        "base_oid",
+        "head_oid",
+        "subject_oid",
+        "seat_id",
+        "role_key",
+        "cwd",
+        "source_roots",
+        "generated_roots",
+        "ephemeral_writable_roots",
+        "protected_roots",
+        "prohibited_roots",
+        "environment_digest",
+        "tool_policy_id",
+    }
+    unknown = set(value) - required
+    missing = required - set(value)
+    if unknown or missing:
+        raise ContextSelectionError(
+            "runtime_binding field mismatch: "
+            f"missing={sorted(missing)}, unknown={sorted(unknown)}"
+        )
+    execution_kind = value["execution_kind"]
+    if execution_kind not in {"development", "review"}:
+        raise ContextSelectionError("runtime_binding execution_kind is invalid.")
+    lease_id = value["lease_id"]
+    sandbox_id = value["sandbox_id"]
+    if execution_kind == "development":
+        if not isinstance(lease_id, str) or not lease_id or sandbox_id is not None:
+            raise ContextSelectionError(
+                "development runtime_binding requires only lease_id."
+            )
+    else:
+        if not isinstance(sandbox_id, str) or not sandbox_id or lease_id is not None:
+            raise ContextSelectionError(
+                "review runtime_binding requires only sandbox_id."
+            )
+        if value["workspace_id"] != sandbox_id:
+            raise ContextSelectionError(
+                "review runtime_binding workspace_id must equal sandbox_id."
+            )
+    scalar_ids = (
+        "activation_id",
+        "workspace_id",
+        "seat_id",
+        "role_key",
+        "tool_policy_id",
+    )
+    if any(
+        not isinstance(value[field], str) or not value[field] for field in scalar_ids
+    ):
+        raise ContextSelectionError("runtime_binding identifiers must be non-empty.")
+    if value["seat_id"] != actor_seat_id or value["role_key"] != target_role:
+        raise ContextSelectionError("runtime_binding seat or role does not match context.")
+    if value["base_oid"] != verified_base_oid or value["head_oid"] != verified_head_oid:
+        raise ContextSelectionError("runtime_binding Git OIDs do not match context.")
+    if not all(
+        isinstance(value[field], str)
+        and re.fullmatch(r"[0-9a-f]{40,64}", value[field])
+        for field in ("base_oid", "head_oid", "subject_oid")
+    ):
+        raise ContextSelectionError("runtime_binding requires full immutable Git OIDs.")
+    if execution_kind == "development" and value["subject_oid"] != verified_head_oid:
+        raise ContextSelectionError("development subject_oid must equal head_oid.")
+    if not isinstance(value["environment_digest"], str) or not re.fullmatch(
+        r"[0-9a-f]{64}", value["environment_digest"]
+    ):
+        raise ContextSelectionError("runtime_binding environment_digest is invalid.")
+
+    normalized_paths: dict[str, Any] = {}
+    for field in ("cwd",):
+        path = Path(str(value[field])).resolve(strict=True)
+        if not path.is_dir():
+            raise ContextSelectionError(f"runtime_binding {field} must be a directory.")
+        normalized_paths[field] = str(path)
+    for field in (
+        "source_roots",
+        "generated_roots",
+        "ephemeral_writable_roots",
+        "protected_roots",
+        "prohibited_roots",
+    ):
+        raw_paths = value[field]
+        if not isinstance(raw_paths, (list, tuple)):
+            raise ContextSelectionError(f"runtime_binding {field} must be a path list.")
+        paths = [str(Path(str(path)).resolve(strict=True)) for path in raw_paths]
+        if any(not Path(path).is_dir() for path in paths) or len(paths) != len(set(paths)):
+            raise ContextSelectionError(
+                f"runtime_binding {field} must contain unique directories."
+            )
+        normalized_paths[field] = paths
+    return {
+        **{field: value[field] for field in required if field not in normalized_paths},
+        **normalized_paths,
+    }
+
+
 def materialize_skill_instructions(skill_packet: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Read exactly the already-selected skill files for one runner activation."""
 
@@ -706,7 +927,7 @@ def materialize_skill_instructions(skill_packet: Mapping[str, Any]) -> list[dict
     for skill in skills:
         if not isinstance(skill, Mapping):
             raise ContextSelectionError("Selected skill metadata must be an object.")
-        skill_path = skill.get("skill_md")
+        skill_path = skill.get("path") or skill.get("skill_md")
         expected_hash = skill.get("sha256")
         expected_chars = skill.get("content_chars")
         if (
@@ -715,7 +936,9 @@ def materialize_skill_instructions(skill_packet: Mapping[str, Any]) -> list[dict
             or not isinstance(expected_chars, int)
         ):
             raise ContextSelectionError("Selected skill metadata is incomplete.")
-        source = _project_relative_path(skill_path)
+        source = _project_relative_path(
+            skill_path if str(skill_path).startswith("skills/") else f"skills/{skill_path}"
+        )
         if not source.is_file():
             raise ContextSelectionError(f"Selected skill file is missing: {source}")
         content = source.read_text(encoding="utf-8")
@@ -807,34 +1030,33 @@ class ContextCompiler:
             seat = bundle["seats"].get(actor_seat_id)
             if seat is None:
                 raise AgentConfigurationError(f"Unknown seat: {actor_seat_id}")
-            if seat["role_key"] != target_role:
+            if target_role not in seat["capabilities"]:
                 raise ContextSelectionError(
-                    f"Seat {actor_seat_id!r} belongs to role {seat['role_key']!r}, "
-                    f"not {target_role!r}."
+                    f"Seat {actor_seat_id!r} is not eligible for capability "
+                    f"{target_role!r}."
                 )
-            if skill_ids:
-                binding = resolve_binding(bundle, actor_seat_id, list(skill_ids))
-                skill_packet = dict(binding["skill_packet"])
-            else:
-                binding = {
-                    "scope": "project",
-                    "seat_id": actor_seat_id,
-                    "role_key": target_role,
-                    "agent_file": f".codex/agents/{actor_seat_id}.toml",
-                }
-                skill_packet = {
-                    "scope": "project",
-                    "role": target_role,
-                    "explicit_injection": True,
-                    "skills": [],
-                }
+            binding = resolve_binding(
+                bundle,
+                actor_seat_id,
+                list(skill_ids),
+                capability_id=target_role,
+            )
+            skill_packet = dict(binding["skill_packet"])
         except AgentConfigurationError as exc:
             raise ContextSelectionError(str(exc)) from exc
 
+        if len(skill_packet["skills"]) > budget.max_skills:
+            raise ContextBudgetError(
+                f"Profile {budget.profile!r} permits at most "
+                f"{budget.max_skills} skills including the professional runtime skill."
+            )
         projected_skills: list[dict[str, Any]] = []
         total_chars = 0
         for descriptor in skill_packet["skills"]:
-            source = _project_relative_path(descriptor["skill_md"])
+            skill_path = descriptor["path"]
+            source = _project_relative_path(
+                skill_path if skill_path.startswith("skills/") else f"skills/{skill_path}"
+            )
             if not source.is_file():
                 raise ContextSelectionError(f"Selected skill file is missing: {source}")
             content = source.read_text(encoding="utf-8")
@@ -843,9 +1065,12 @@ class ContextCompiler:
                 {
                     "id": descriptor["id"],
                     "kind": descriptor["kind"],
-                    "skill_md": descriptor["skill_md"],
+                    "version": descriptor["version"],
+                    "path": descriptor["path"],
                     "content_chars": len(content),
                     "sha256": _sha256_text(content),
+                    "content_budget_chars": descriptor["content_budget_chars"],
+                    "mcp_prerequisites": list(descriptor["mcp_prerequisites"]),
                 }
             )
         if total_chars > budget.max_skill_chars:
@@ -854,7 +1079,7 @@ class ContextCompiler:
             )
         return {
             "scope": "project",
-            "role": target_role,
+            "capability": target_role,
             "explicit_injection": True,
             "max_content_chars": budget.max_skill_chars,
             "skills": projected_skills,
@@ -873,6 +1098,11 @@ class ContextCompiler:
         context_action: str | None = None,
         actor_seat_id: str | None = None,
         selected_skill_ids: Sequence[str] | None = None,
+        compiled_profile_ref: str | Path | None = None,
+        compiled_profile_digest: str | None = None,
+        runtime_binding: Mapping[str, Any] | None = None,
+        activation_contract_packet: Any | None = None,
+        validated_memory_refs: Sequence[Mapping[str, Any]] | None = None,
         max_messages: int | None = None,
         max_diff_chars: int | None = None,
         paths: Sequence[str] | None = None,
@@ -912,6 +1142,89 @@ class ContextCompiler:
             skill_ids=skill_ids,
             budget=budget,
         )
+        professional_profile = _compiled_professional_profile_binding(
+            actor_seat_id=actor_seat_id,
+            compiled_profile_ref=compiled_profile_ref,
+            compiled_profile_digest=compiled_profile_digest,
+            skill_packet=skill_packet,
+        )
+        compiled_contract: dict[str, Any] | None = None
+        if activation_contract_packet is not None:
+            if hasattr(activation_contract_packet, "as_dict") and hasattr(
+                activation_contract_packet, "rendered_packet"
+            ):
+                rendered = activation_contract_packet.rendered_packet
+                compiled_contract = {
+                    "contract": activation_contract_packet.as_dict(),
+                    "contract_sha256": rendered.contract_sha256,
+                    "packet_ref": rendered.packet_ref,
+                    "packet_sha256": rendered.packet_sha256,
+                    "packet_markdown": rendered.markdown,
+                }
+            elif isinstance(activation_contract_packet, Mapping):
+                compiled_contract = dict(activation_contract_packet)
+            else:
+                raise ContextSelectionError(
+                    "activation_contract_packet must be a compiled contract or mapping."
+                )
+        selected_memory_refs: list[dict[str, str]] = []
+        for raw in validated_memory_refs or ():
+            if not isinstance(raw, Mapping) or raw.get("validated") is not True:
+                raise ContextSelectionError(
+                    "Serena memory references must be opaque validated bindings."
+                )
+            name = raw.get("name") or raw.get("memory_name")
+            reference = raw.get("ref") or raw.get("memory_ref")
+            digest = raw.get("sha256") or raw.get("memory_sha256")
+            if (
+                not isinstance(name, str)
+                or name in {"*", "all"}
+                or name not in SERENA_MEMORY_NAMES
+                or not isinstance(reference, str)
+                or not reference
+                or reference.replace("\\", "/").casefold().startswith("docs/")
+                or "://docs/" in reference.replace("\\", "/").casefold()
+                or "/docs/" in reference.replace("\\", "/").casefold()
+                or not isinstance(digest, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+            ):
+                raise ContextSelectionError("Invalid named Serena memory binding.")
+            selected_memory_refs.append(
+                {"name": name, "ref": reference, "sha256": digest}
+            )
+        if len({item["name"] for item in selected_memory_refs}) != len(
+            selected_memory_refs
+        ):
+            raise ContextSelectionError("Serena memory references must be unique.")
+        if len({item["ref"] for item in selected_memory_refs}) != len(
+            selected_memory_refs
+        ):
+            raise ContextSelectionError("Serena memory references must not reuse refs.")
+        if len(selected_memory_refs) > 3:
+            raise ContextSelectionError(
+                "Serena memory references exceed the minimum-reference cap."
+            )
+        if compiled_contract is not None:
+            contract_document = compiled_contract.get("contract")
+            onboarding = (
+                contract_document.get("serena_onboarding")
+                if isinstance(contract_document, Mapping)
+                else None
+            )
+            if onboarding is None and selected_memory_refs:
+                raise ContextSelectionError(
+                    "Contract has no selected Serena memory bindings."
+                )
+            if isinstance(onboarding, Mapping):
+                expected = onboarding.get("memory_bindings")
+                observed = [
+                    {"name": item["name"], "sha256": item["sha256"]}
+                    for item in selected_memory_refs
+                ]
+                if expected != observed:
+                    raise ContextSelectionError(
+                        "Serena memory refs differ from the contract bindings."
+                    )
 
         message_scan_limit = max(applied_messages, min(applied_messages * 8, 128))
         raw_message_context = self.queue.context_bundle(
@@ -944,6 +1257,13 @@ class ContextCompiler:
         git_reader = GitContextReader(repository)
         verified_base = git_reader.verify_commit(base_oid)
         verified_head = git_reader.verify_commit(head_oid)
+        compiled_runtime_binding = _compiled_runtime_binding(
+            runtime_binding,
+            actor_seat_id=actor_seat_id,
+            target_role=target_role,
+            verified_base_oid=verified_base,
+            verified_head_oid=verified_head,
+        )
         authoritative_changes = git_reader.changed_paths(verified_base, verified_head)
         selected_paths, path_reasons, path_omissions = _select_paths(
             changes=authoritative_changes,
@@ -985,7 +1305,7 @@ class ContextCompiler:
             )
 
         packet = {
-            "context_version": 2,
+            "context_version": 4,
             "thread_id": thread_id,
             "work_item_id": work_item_id,
             "target_role": target_role,
@@ -999,6 +1319,10 @@ class ContextCompiler:
             },
             "agent_binding": agent_binding,
             "skill_packet": skill_packet,
+            "professional_profile": professional_profile,
+            "runtime_binding": compiled_runtime_binding,
+            "activation_contract_packet": compiled_contract,
+            "serena_memory_refs": selected_memory_refs,
             "message_context": {
                 "snapshot": snapshot,
                 "delta_messages": selected_messages,
@@ -1051,6 +1375,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile", default="auto")
     parser.add_argument("--action")
     parser.add_argument("--skill", action="append", dest="selected_skill_ids")
+    parser.add_argument("--compiled-profile-ref")
+    parser.add_argument("--compiled-profile-digest")
     parser.add_argument("--max-messages", type=int)
     parser.add_argument("--max-diff-chars", type=int)
     parser.add_argument("--path", action="append", dest="paths")
@@ -1074,6 +1400,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         context_profile=args.profile,
         context_action=args.action,
         selected_skill_ids=args.selected_skill_ids,
+        compiled_profile_ref=args.compiled_profile_ref,
+        compiled_profile_digest=args.compiled_profile_digest,
         max_messages=args.max_messages,
         max_diff_chars=args.max_diff_chars,
         paths=args.paths,

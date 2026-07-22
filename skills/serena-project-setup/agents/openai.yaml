@@ -1,6 +1,0 @@
-interface:
-  display_name: "Serena Project Setup"
-  short_description: "Prepare Serena before the agent team starts"
-  default_prompt: "Use $serena-project-setup to configure, index, and verify Serena for this local project."
-policy:
-  allow_implicit_invocation: false

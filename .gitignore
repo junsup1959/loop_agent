@@ -1,0 +1,66 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+./CLAUDE.md
+# Maven (삭제 전까지)
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst
+
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+*.swo
+
+# Python updater bytecode
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# 환경 설정 (보안)
+application-local.yml
+application-prod.yml
+
+# 기타
+*.bak
+*.tmp
+nul
+bin/
+
+# DB 테스트 데이터 시드 (로컬 전용)
+db/
+sql/
+
+# 인증서/키스토어 (dev 로컬 전용 — 고객별 cert가 repo에 들어가는 것 방지)
+keys/
+config/dev-manager.p12
+keys_bak_sharedca/
+
+# 작업내역
+작업내역/
+
+# Claude
+.claude/
+.serena/
+.mcp.json
+.idea/vcs.xml
+.claude-flow
+/CLAUDE.md

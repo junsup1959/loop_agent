@@ -1,0 +1,163 @@
+[policy]
+version = 1
+policy_id = "mandatory-mcp-v1"
+enabled = true
+required_servers = ["serena", "sequentialthinking"]
+health_preflight_required = true
+tool_preflight_required = true
+usage_receipt_required_when_invoked = true
+fallback_allowed = false
+skill_may_expand_servers = false
+skill_may_expand_tools = false
+profile_may_expand_servers = false
+profile_may_expand_tools = false
+
+[[servers]]
+id = "serena"
+enabled = true
+required = true
+health_requirement = "healthy"
+tool_allowlist = [
+  "initial_instructions",
+  "check_onboarding_performed",
+  "onboarding",
+  "list_memories",
+  "read_memory",
+  "write_memory",
+  "find_file",
+  "list_dir",
+  "read_file",
+  "search_for_pattern",
+  "get_symbols_overview",
+  "find_symbol",
+  "find_referencing_symbols",
+]
+
+[[servers]]
+id = "sequentialthinking"
+enabled = true
+required = true
+health_requirement = "healthy"
+tool_allowlist = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "pm"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "ta"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory", "find_file", "list_dir", "read_file", "search_for_pattern", "get_symbols_overview", "find_symbol", "find_referencing_symbols"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "pl"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "check_onboarding_performed", "onboarding", "list_memories", "read_memory", "write_memory", "find_file", "list_dir", "read_file", "search_for_pattern", "get_symbols_overview", "find_symbol", "find_referencing_symbols"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "developer"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory", "find_file", "list_dir", "read_file", "search_for_pattern", "get_symbols_overview", "find_symbol", "find_referencing_symbols"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "qa_sdet"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory", "find_file", "list_dir", "read_file", "search_for_pattern", "get_symbols_overview", "find_symbol", "find_referencing_symbols"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "build_release"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory", "find_file", "list_dir", "read_file", "search_for_pattern"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "worker"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory", "find_file", "list_dir", "read_file", "search_for_pattern", "get_symbols_overview", "find_symbol", "find_referencing_symbols"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[capability_bindings]]
+capability_id = "advisory"
+allowed_servers = ["serena", "sequentialthinking"]
+serena_tools = ["initial_instructions", "list_memories", "read_memory", "find_file", "list_dir", "read_file", "search_for_pattern", "get_symbols_overview", "find_symbol", "find_referencing_symbols"]
+sequentialthinking_tools = ["sequentialthinking"]
+
+[[required_use_bindings]]
+id = "required-mcp-health"
+server_ids = ["serena", "sequentialthinking"]
+tool_ids = []
+capabilities = ["pm", "ta", "pl", "developer", "qa_sdet", "build_release", "worker", "advisory"]
+transition_ids = ["*"]
+trigger_ids = ["activation-admission"]
+usage_receipt_required = false
+no_fallback = true
+
+[[required_use_bindings]]
+id = "serena-project-onboarding"
+server_ids = ["serena"]
+tool_ids = ["initial_instructions", "check_onboarding_performed", "onboarding", "list_memories"]
+capabilities = ["pl"]
+transition_ids = ["pl_assign_implementation", "pl_issue_rework"]
+trigger_ids = ["new-project", "missing-required-memory", "material-project-change", "stale-project-knowledge"]
+usage_receipt_required = true
+no_fallback = true
+
+[[required_use_bindings]]
+id = "serena-coding-start"
+server_ids = ["serena"]
+tool_ids = ["initial_instructions"]
+capabilities = ["developer"]
+transition_ids = ["dev_submit_revision", "dev_submit_rework"]
+trigger_ids = ["before-source-work"]
+usage_receipt_required = true
+no_fallback = true
+
+[[required_use_bindings]]
+id = "serena-semantic-review"
+server_ids = ["serena"]
+tool_ids = ["initial_instructions", "find_symbol", "find_referencing_symbols"]
+capabilities = ["ta", "qa_sdet"]
+transition_ids = ["ta_review_exact_oid", "qa_validate_integration"]
+trigger_ids = ["semantic-source", "symbol-reference", "multi-file-impact", "selected-project-memory"]
+usage_receipt_required = true
+no_fallback = true
+
+[[required_use_bindings]]
+id = "sequential-planning"
+server_ids = ["sequentialthinking"]
+tool_ids = ["sequentialthinking"]
+capabilities = ["pl"]
+transition_ids = ["pl_assign_implementation"]
+trigger_ids = ["dependency-decomposition", "plan-ir", "alternative-comparison"]
+usage_receipt_required = true
+no_fallback = true
+
+[[required_use_bindings]]
+id = "sequential-rework"
+server_ids = ["sequentialthinking"]
+tool_ids = ["sequentialthinking"]
+capabilities = ["pl"]
+transition_ids = ["pl_issue_rework"]
+trigger_ids = ["failure-route", "write-scope-conflict", "declared-replan"]
+usage_receipt_required = true
+no_fallback = true
+
+[[trigger_rules]]
+id = "serena-semantic-source"
+server_id = "serena"
+trigger_ids = ["semantic-source", "symbol-reference", "multi-file-impact", "selected-project-memory"]
+usage_receipt_required = true
+no_fallback = true
+
+[[trigger_rules]]
+id = "sequential-complex-reasoning"
+server_id = "sequentialthinking"
+trigger_ids = ["plan-ir", "dependency-decomposition", "alternative-comparison", "write-scope-conflict", "failure-route", "declared-replan"]
+usage_receipt_required = true
+no_fallback = true

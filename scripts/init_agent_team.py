@@ -18,8 +18,9 @@ import tomllib
 from typing import Any, Sequence
 
 try:
+    from scripts.agent_team_layout import AgentTeamLayout
     from scripts.agent_team_context import ContextProfileCatalog, ContextSelectionError
-    from scripts.agent_team_queue import SQLiteMessageQueue
+    from scripts.agent_team_state import AxStateStore, LATEST_SCHEMA_VERSION
     from scripts.project_agents import (
         AgentConfigurationError,
         compile_runtime_agent,
@@ -36,8 +37,12 @@ try:
     )
     from scripts.serena_project_knowledge import ProjectKnowledgeError, load_policy
 except ModuleNotFoundError:
+    from agent_team_layout import AgentTeamLayout
     from agent_team_context import ContextProfileCatalog, ContextSelectionError  # type: ignore[no-redef]
-    from agent_team_queue import SQLiteMessageQueue  # type: ignore[no-redef]
+    from agent_team_state import (  # type: ignore[no-redef]
+        AxStateStore,
+        LATEST_SCHEMA_VERSION,
+    )
     from project_agents import (  # type: ignore[no-redef]
         AgentConfigurationError,
         compile_runtime_agent,
@@ -58,27 +63,36 @@ except ModuleNotFoundError:
     )
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RUNTIME_ROOT = PROJECT_ROOT / ".agent-team"
+LAYOUT = AgentTeamLayout.discover(Path(__file__))
+PROJECT_ROOT = LAYOUT.source_root
+DEFAULT_RUNTIME_ROOT = (
+    Path(os.environ.get("LOCALAPPDATA", PROJECT_ROOT.parent))
+    / "agent-team-ax"
+    / PROJECT_ROOT.name
+)
 CODEX_CONFIG_PATH = PROJECT_ROOT / ".codex" / "config.toml"
-TEAM_CONFIG_PATH = PROJECT_ROOT / "agents" / "team.toml"
+TEAM_CONFIG_PATH = LAYOUT.team_path
 PYTHON_REQUIREMENTS_PATH = PROJECT_ROOT / "scripts" / "requirements.txt"
 LEGACY_MCP_PACKAGE_PATH = PROJECT_ROOT / "mcp-package"
 SEQUENTIAL_THINKING_PACKAGE = "@modelcontextprotocol/server-sequential-thinking"
 SEQUENTIAL_THINKING_VERSION = "2026.7.4"
-SEQUENTIAL_THINKING_ENTRYPOINT = (
-    "node_modules/@modelcontextprotocol/server-sequential-thinking/dist/index.js"
-)
-MAX_AGENT_THREADS = 8
+SEQUENTIAL_THINKING_PACKAGE_PATH = Path("@modelcontextprotocol") / "server-sequential-thinking"
+SEQUENTIAL_THINKING_ENTRYPOINT = Path("dist") / "index.js"
+SUPPORTED_MCP_CAPABILITIES = frozenset({"serena", "sequentialthinking"})
+SERENA_REQUIRED_TOOL = "initial_instructions"
+MAX_AGENT_THREADS = 6
+FIXED_SEAT_COUNT = 5
 MANAGED_CONFIG_MARKER = "# agent-team-managed: init_agent_team.py"
 MCP_PROBE_ID = "agent-team-initializer-probe"
 MCP_PROTOCOL_VERSION = "2025-03-26"
 RUNTIME_DIRECTORIES = (
     "state",
-    "worktrees",
-    "build",
-    "mcp",
-    "npm-cache",
+    "state/locks",
+    "state/repositories",
+    "repositories",
+    "workspaces",
+    "activations",
+    "artifacts",
     "artifacts/contexts",
     "artifacts/results",
     "artifacts/builds",
@@ -89,6 +103,21 @@ RUNTIME_DIRECTORIES = (
     "artifacts/serena",
     "state/project-knowledge",
     "logs",
+)
+SERENA_ENABLED_TOOLS = (
+    "initial_instructions",
+    "check_onboarding_performed",
+    "onboarding",
+    "list_memories",
+    "read_memory",
+    "write_memory",
+    "find_file",
+    "list_dir",
+    "read_file",
+    "search_for_pattern",
+    "get_symbols_overview",
+    "find_symbol",
+    "find_referencing_symbols",
 )
 REQUIRED_QUEUE_TABLES = {
     "messages",
@@ -125,12 +154,27 @@ def _inside_project(path: Path) -> Path:
 
 
 def _resolve_runtime_root(value: str | None) -> Path:
-    if value is None:
-        return DEFAULT_RUNTIME_ROOT.resolve()
-    configured = Path(value)
-    if configured.is_absolute():
-        return _inside_project(configured)
-    return _inside_project(PROJECT_ROOT / configured)
+    configured = Path(value) if value is not None else DEFAULT_RUNTIME_ROOT
+    if value is not None and not configured.is_absolute():
+        raise InitializationError("AX_ROOT must be an absolute path.")
+    resolved = configured.expanduser().resolve()
+    try:
+        resolved.relative_to(PROJECT_ROOT)
+    except ValueError:
+        return resolved
+    raise InitializationError(
+        f"AX_ROOT must be independent from the Agent-Team source root: {resolved}"
+    )
+
+
+def _inside_runtime(runtime_root: Path, path: Path) -> Path:
+    root = runtime_root.resolve()
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise InitializationError(f"Path escapes AX_ROOT: {resolved}") from exc
+    return resolved
 
 
 def _configured_team_path(setting: str) -> Path:
@@ -150,11 +194,17 @@ def _configured_team_path(setting: str) -> Path:
     configured = Path(value)
     if configured.is_absolute():
         raise InitializationError(f"Project team setting {setting} must be relative: {value}")
+    normalized = value.replace("\\", "/")
+    if normalized.split("/", 1)[0] in {"agents", "skills", "profile", "scripts"}:
+        return LAYOUT.resolve_source_path(normalized)
     return _inside_project(PROJECT_ROOT / configured)
 
 
 def _runtime_paths(runtime_root: Path) -> list[Path]:
-    return [_inside_project(runtime_root / relative) for relative in RUNTIME_DIRECTORIES]
+    return [
+        _inside_runtime(runtime_root, runtime_root / relative)
+        for relative in RUNTIME_DIRECTORIES
+    ]
 
 
 def _initialize_runtime_layout(runtime_root: Path) -> None:
@@ -201,6 +251,47 @@ def _command_path(command: str) -> str:
     if resolved is None:
         raise InitializationError(f"Required command is not available: {command}")
     return resolved
+
+
+def _npm_command() -> str:
+    return _command_path("npm.cmd" if os.name == "nt" else "npm")
+
+
+def _global_npm_root() -> Path:
+    completed = _run_checked([_npm_command(), "root", "--global"])
+    roots = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
+    if len(roots) != 1:
+        raise InitializationError(
+            "npm root --global did not return exactly one global module directory."
+        )
+    root = Path(roots[0])
+    if not root.is_absolute():
+        raise InitializationError(f"npm global module directory is not absolute: {root}")
+    return root
+
+
+def _serena_stdio_args() -> list[str]:
+    return [
+        "start-mcp-server",
+        "--project-from-cwd",
+        "--context",
+        "codex",
+        "--transport",
+        "stdio",
+        "--enable-web-dashboard",
+        "false",
+        "--open-web-dashboard",
+        "false",
+    ]
+
+
+def _serena_stdio_capability() -> dict[str, Any]:
+    return {
+        "transport": "stdio",
+        "command": _command_path("serena"),
+        "args": _serena_stdio_args(),
+        "cwd": str(PROJECT_ROOT),
+    }
 
 
 def _serena_config_path() -> Path:
@@ -332,7 +423,9 @@ def _load_serena_service_endpoint_from_path(
     if not isinstance(state_file, str) or not state_file:
         raise InitializationError("Serena service state_file must be a relative path.")
     state_path = _inside_project(PROJECT_ROOT / state_file)
-    expected_state_path = _inside_project(runtime_root / "state" / "serena-service.json")
+    expected_state_path = _inside_runtime(
+        runtime_root, runtime_root / "state" / "serena-service.json"
+    )
     if state_path != expected_state_path:
         raise InitializationError(
             "Serena service state_file must match the selected runtime root: "
@@ -513,43 +606,23 @@ def _check_python_dependencies() -> dict[str, Any]:
     }
 
 
-def _sequential_thinking_paths(runtime_root: Path) -> dict[str, Path]:
-    mcp_root = _inside_project(runtime_root / "mcp")
+def _sequential_thinking_paths() -> dict[str, Path]:
+    package_root = _global_npm_root() / SEQUENTIAL_THINKING_PACKAGE_PATH
     return {
-        "root": mcp_root,
-        "manifest": _inside_project(mcp_root / "package.json"),
-        "entrypoint": _inside_project(mcp_root / SEQUENTIAL_THINKING_ENTRYPOINT),
-        "package_manifest": _inside_project(
-            mcp_root
-            / "node_modules"
-            / "@modelcontextprotocol"
-            / "server-sequential-thinking"
-            / "package.json"
-        ),
-        "cache": _inside_project(runtime_root / "npm-cache"),
+        "root": package_root,
+        "entrypoint": package_root / SEQUENTIAL_THINKING_ENTRYPOINT,
+        "package_manifest": package_root / "package.json",
     }
 
 
-def _sequential_thinking_manifest() -> str:
-    data = {
-        "name": "agent-team-runtime-mcp",
-        "private": True,
-        "version": "1.0.0",
-        "dependencies": {
-            SEQUENTIAL_THINKING_PACKAGE: SEQUENTIAL_THINKING_VERSION,
-        },
-    }
-    return json.dumps(data, indent=2) + "\n"
-
-
-def _check_sequential_thinking(runtime_root: Path) -> dict[str, Any]:
+def _check_sequential_thinking() -> dict[str, Any]:
     if LEGACY_MCP_PACKAGE_PATH.exists():
         raise InitializationError(
             "Legacy mcp-package directory must be removed before verification: "
             f"{LEGACY_MCP_PACKAGE_PATH}"
         )
-    paths = _sequential_thinking_paths(runtime_root)
-    for label in ("manifest", "package_manifest", "entrypoint"):
+    paths = _sequential_thinking_paths()
+    for label in ("package_manifest", "entrypoint"):
         if not paths[label].is_file():
             raise InitializationError(
                 f"Sequential Thinking {label} is missing: {paths[label]}"
@@ -576,43 +649,53 @@ def _check_sequential_thinking(runtime_root: Path) -> dict[str, Any]:
     }
 
 
-def _ensure_sequential_thinking(runtime_root: Path) -> dict[str, Any]:
+def _ensure_sequential_thinking() -> dict[str, Any]:
     if LEGACY_MCP_PACKAGE_PATH.exists():
         raise InitializationError(
             "Legacy mcp-package directory must be removed before initialization: "
             f"{LEGACY_MCP_PACKAGE_PATH}"
         )
-    paths = _sequential_thinking_paths(runtime_root)
-    paths["root"].mkdir(parents=True, exist_ok=True)
-    paths["cache"].mkdir(parents=True, exist_ok=True)
-    expected_manifest = _sequential_thinking_manifest()
-    manifest_changed = (
-        not paths["manifest"].is_file()
-        or paths["manifest"].read_text(encoding="utf-8") != expected_manifest
-    )
-    if manifest_changed:
-        paths["manifest"].write_text(expected_manifest, encoding="utf-8", newline="\n")
     try:
-        return _check_sequential_thinking(runtime_root)
+        return _check_sequential_thinking()
     except InitializationError:
-        npm = _command_path("npm.cmd" if os.name == "nt" else "npm")
         _run_checked(
             [
-                npm,
-                "--cache",
-                str(paths["cache"]),
+                _npm_command(),
                 "install",
-                "--prefix",
-                str(paths["root"]),
+                "--global",
                 "--no-audit",
                 "--no-fund",
                 "--ignore-scripts",
                 f"{SEQUENTIAL_THINKING_PACKAGE}@{SEQUENTIAL_THINKING_VERSION}",
             ]
         )
-    result = _check_sequential_thinking(runtime_root)
+    result = _check_sequential_thinking()
     result["installed_now"] = True
     return result
+
+
+def install_mcp_dependencies(runtime_root: Path) -> dict[str, Any]:
+    """Install MCP executable dependencies without changing Codex configuration."""
+
+    return {
+        "status": "ok",
+        "operation": "install-mcp-dependencies",
+        "runtime_root": str(runtime_root),
+        "serena": _serena_stdio_capability(),
+        "sequentialthinking": _ensure_sequential_thinking(),
+    }
+
+
+def check_mcp_dependencies(runtime_root: Path) -> dict[str, Any]:
+    """Verify MCP executable dependencies without changing configuration."""
+
+    return {
+        "status": "ok",
+        "operation": "check-mcp-dependencies",
+        "runtime_root": str(runtime_root),
+        "serena": _serena_stdio_capability(),
+        "sequentialthinking": _check_sequential_thinking(),
+    }
 
 
 def _toml_string(value: str) -> str:
@@ -627,23 +710,26 @@ def _render_codex_config(
     agent_bundle: dict[str, Any], runtime_root: Path
 ) -> str:
     seats = list_seats(agent_bundle)
-    if len(seats) != MAX_AGENT_THREADS:
+    fixed = [seat for seat in seats if seat.get("slot_type") == "fixed"]
+    elastic = [seat for seat in seats if seat.get("slot_type") == "elastic"]
+    if len(fixed) != FIXED_SEAT_COUNT or len(elastic) != 1:
         raise InitializationError(
-            f"Expected {MAX_AGENT_THREADS} seats, found {len(seats)}."
+            "Expected five fixed seats and one elastic slot, found "
+            f"fixed={len(fixed)}, elastic={len(elastic)}."
         )
     seat_lines = [
-        f"# - {seat['seat_id']} -> {seat['role_key']}"
+        f"# - {seat.get('seat_id') or seat.get('slot_id')} -> "
+        f"{seat['slot_key']} ({', '.join(seat['eligible_capabilities'])})"
         for seat in seats
     ]
-    sequential_paths = _sequential_thinking_paths(runtime_root)
-    serena_service = _load_serena_service_endpoint(agent_bundle, runtime_root)
     project_cwd = str(PROJECT_ROOT)
-    sequential_entrypoint = str(sequential_paths["entrypoint"])
+    sequential_entrypoint = str(_sequential_thinking_paths()["entrypoint"])
     return "\n".join(
         [
             MANAGED_CONFIG_MARKER,
             "# Generated by scripts/init_agent_team.py. Do not edit manually.",
             "# Custom seat agents are auto-discovered from .codex/agents/.",
+            "# MCP server definitions follow sample_config.toml: Serena stdio and global npm.",
             "# Current seat assignments:",
             *seat_lines,
             "",
@@ -653,9 +739,12 @@ def _render_codex_config(
             "interrupt_message = true",
             "",
             "[mcp_servers.serena]",
-            "url = " + _toml_string(serena_service["url"]),
+            'command = "serena"',
+            "args = " + _toml_string_list(_serena_stdio_args()),
+            "cwd = " + _toml_string(project_cwd),
             "enabled = true",
             "required = true",
+            "enabled_tools = " + _toml_string_list(list(SERENA_ENABLED_TOOLS)),
             "startup_timeout_sec = 45",
             "tool_timeout_sec = 120",
             "",
@@ -687,54 +776,83 @@ def _ensure_codex_config(agent_bundle: dict[str, Any], runtime_root: Path) -> No
     CODEX_CONFIG_PATH.write_text(expected, encoding="utf-8", newline="\n")
 
 
+def _check_serena_tool_allowlist(server: dict[str, Any]) -> None:
+    enabled_tools = server.get("enabled_tools")
+    if enabled_tools != list(SERENA_ENABLED_TOOLS):
+        raise InitializationError(
+            "Serena enabled_tools must be the explicit source-controlled "
+            f"allowlist and include {SERENA_REQUIRED_TOOL!r}."
+        )
+
+
 def _check_codex_config(agent_bundle: dict[str, Any], runtime_root: Path) -> None:
     if not CODEX_CONFIG_PATH.is_file():
         raise InitializationError(f"Project Codex config not found: {CODEX_CONFIG_PATH}")
-    expected = _render_codex_config(agent_bundle, runtime_root)
-    actual = CODEX_CONFIG_PATH.read_text(encoding="utf-8")
-    if actual != expected:
-        raise InitializationError(
-            f"Project Codex config does not match generated configuration: {CODEX_CONFIG_PATH}"
-        )
     with CODEX_CONFIG_PATH.open("rb") as stream:
         config = tomllib.load(stream)
     agents = config.get("agents")
     if not isinstance(agents, dict) or agents.get("max_threads") != MAX_AGENT_THREADS:
-        raise InitializationError("Project Codex config must set agents.max_threads to 8.")
+        raise InitializationError(
+            f"Project Codex config must set agents.max_threads to {MAX_AGENT_THREADS}."
+        )
     mcp_servers = config.get("mcp_servers")
     if not isinstance(mcp_servers, dict):
         raise InitializationError("Project Codex config must define MCP servers.")
     expected_mcp_servers = {"serena", "sequentialthinking"}
-    if set(mcp_servers) != expected_mcp_servers:
+    missing_mcp_servers = expected_mcp_servers - set(mcp_servers)
+    if missing_mcp_servers:
         raise InitializationError(
-            "Project Codex MCP server set mismatch: "
-            f"expected {sorted(expected_mcp_servers)}, actual {sorted(mcp_servers)}"
+            "Project Codex config is missing required MCP servers: "
+            f"{sorted(missing_mcp_servers)}"
         )
+    project_cwd = str(PROJECT_ROOT)
+    sequential_entrypoint = str(_sequential_thinking_paths()["entrypoint"])
+    expected_servers = {
+        "serena": {
+            "command": "serena",
+            "args": _serena_stdio_args(),
+            "cwd": project_cwd,
+            "enabled": True,
+            "required": True,
+            "enabled_tools": list(SERENA_ENABLED_TOOLS),
+        },
+        "sequentialthinking": {
+            "command": "node",
+            "args": [sequential_entrypoint],
+            "cwd": project_cwd,
+            "enabled": True,
+            "required": True,
+        },
+    }
+    for name, expected in expected_servers.items():
+        server = mcp_servers[name]
+        if not isinstance(server, dict):
+            raise InitializationError(f"Project Codex MCP server must be a table: {name}")
+        mismatched = {
+            field: {"expected": value, "actual": server.get(field)}
+            for field, value in expected.items()
+            if server.get(field) != value
+        }
+        if mismatched:
+            raise InitializationError(
+                f"Project Codex MCP server does not match sample_config.toml semantics: "
+                f"{name}: {mismatched}"
+            )
+        if name == "serena":
+            _check_serena_tool_allowlist(server)
 
 
 def _check_skill_mirror(
     catalog: dict[str, Any],
     skill_index: dict[str, dict[str, Any]],
 ) -> None:
-    source_root = _inside_project(PROJECT_ROOT / catalog["catalog"]["source_root"])
-    runtime_root = _inside_project(PROJECT_ROOT / catalog["catalog"]["runtime_root"])
-    runtime_catalog = PROJECT_ROOT / ".codex" / "expertise-catalog.toml"
-    source_catalog = PROJECT_ROOT / "skills" / "catalog.toml"
-    if not runtime_catalog.is_file():
-        raise InitializationError(f"Missing runtime skill catalog: {runtime_catalog}")
-    if source_catalog.read_bytes() != runtime_catalog.read_bytes():
-        raise InitializationError("Runtime expertise catalog does not match its source.")
-
+    del catalog
+    source_root = LAYOUT.skill_root
     for skill_id in skill_index:
         for relative in (Path("SKILL.md"), Path("agents/openai.yaml")):
             source = _inside_project(source_root / skill_id / relative)
-            runtime = _inside_project(runtime_root / skill_id / relative)
-            if not runtime.is_file():
-                raise InitializationError(f"Missing runtime skill file: {runtime}")
-            if source.read_bytes() != runtime.read_bytes():
-                raise InitializationError(
-                    f"Runtime skill mirror mismatch: {skill_id}/{relative.as_posix()}"
-                )
+            if not source.is_file():
+                raise InitializationError(f"Missing canonical skill file: {source}")
 
 
 def _check_agent_mirror(bundle: dict[str, Any]) -> None:
@@ -773,6 +891,9 @@ def _check_database(db_path: Path) -> None:
             rows = connection.execute(
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
+            schema_row = connection.execute(
+                "SELECT schema_version FROM ax_schema_meta WHERE singleton = 1"
+            ).fetchone()
     except sqlite3.Error as exc:
         raise InitializationError(f"Cannot read SQLite database {db_path}: {exc}") from exc
     actual_tables = {row[0] for row in rows}
@@ -781,6 +902,11 @@ def _check_database(db_path: Path) -> None:
         raise InitializationError(
             f"SQLite database is missing tables: {sorted(missing_tables)}"
         )
+    if schema_row is None or schema_row[0] != LATEST_SCHEMA_VERSION:
+        raise InitializationError(
+            "SQLite control state must use AX schema "
+            f"v{LATEST_SCHEMA_VERSION}."
+        )
 
 
 def _check_context_profiles(agent_bundle: dict[str, Any]) -> dict[str, Any]:
@@ -788,7 +914,7 @@ def _check_context_profiles(agent_bundle: dict[str, Any]) -> dict[str, Any]:
         catalog = ContextProfileCatalog()
         role_defaults = {
             role: catalog.resolve(target_role=role, requested_profile="auto").profile
-            for role in sorted({seat["role_key"] for seat in agent_bundle["seats"].values()})
+            for role in sorted(agent_bundle["capabilities"])
         }
     except ContextSelectionError as exc:
         raise InitializationError(f"Invalid context profile catalog: {exc}") from exc
@@ -799,11 +925,12 @@ def _check_context_profiles(agent_bundle: dict[str, Any]) -> dict[str, Any]:
 
 
 def _check_serena_knowledge_policy(agent_bundle: dict[str, Any]) -> dict[str, Any]:
+    policy_path = _configured_team_path("serena_knowledge_policy")
     try:
-        policy = load_policy(agent_bundle["serena_knowledge_policy_path"])
+        policy = load_policy(policy_path)
     except ProjectKnowledgeError as exc:
         raise InitializationError(f"Invalid Serena knowledge policy: {exc}") from exc
-    role_keys = {seat["role_key"] for seat in agent_bundle["seats"].values()}
+    role_keys = set(agent_bundle["capabilities"])
     if policy.owner_role not in role_keys:
         raise InitializationError(
             f"Serena knowledge owner role is not configured: {policy.owner_role}"
@@ -820,7 +947,7 @@ def _check_serena_knowledge_policy(agent_bundle: dict[str, Any]) -> dict[str, An
             f"extra={sorted(set(policy.role_memory_refs) - role_keys)}"
         )
     return {
-        "path": str(agent_bundle["serena_knowledge_policy_path"]),
+        "path": str(policy_path),
         "owner_role": policy.owner_role,
         "required_memory_names": list(policy.required_memory_names),
     }
@@ -851,6 +978,12 @@ def _result(
         "seat_registry_created": seat_created,
         "skill_count": skill_count,
         "agent_count": len(seats),
+        "fixed_seat_count": sum(
+            seat.get("slot_type") == "fixed" for seat in seats
+        ),
+        "elastic_slot_count": sum(
+            seat.get("slot_type") == "elastic" for seat in seats
+        ),
         "agents_max_threads": MAX_AGENT_THREADS,
         "codex_config": str(CODEX_CONFIG_PATH),
         "serena": serena,
@@ -861,11 +994,11 @@ def _result(
         "serena_knowledge_policy": serena_knowledge_policy,
         "seats": [
             {
-                "seat_id": seat["seat_id"],
-                "role_key": seat["role_key"],
-                "model": seat["model"],
-                "reasoning_effort": seat["model_reasoning_effort"],
-                "sandbox_mode": seat["sandbox_mode"],
+                "seat_id": seat.get("seat_id"),
+                "slot_id": seat.get("slot_id"),
+                "slot_key": seat["slot_key"],
+                "slot_type": seat["slot_type"],
+                "eligible_capabilities": list(seat["eligible_capabilities"]),
             }
             for seat in seats
         ],
@@ -873,13 +1006,10 @@ def _result(
 
 
 def initialize(runtime_root: Path) -> dict[str, Any]:
-    serena = _ensure_serena_initialized()
-    _load_serena_service_endpoint_from_path(
-        _configured_team_path("serena_service"), runtime_root
-    )
     _initialize_runtime_layout(runtime_root)
     python_dependencies = _ensure_python_dependencies()
-    sequential_thinking = _ensure_sequential_thinking(runtime_root)
+    serena = _serena_stdio_capability()
+    sequential_thinking = _ensure_sequential_thinking()
 
     catalog = load_catalog()
     skill_index = validate_catalog(catalog)
@@ -888,12 +1018,14 @@ def initialize(runtime_root: Path) -> dict[str, Any]:
     agent_bundle, seat_created = initialize_seats()
     synchronize_agents(agent_bundle)
     context_profiles = _check_context_profiles(agent_bundle)
-    serena_service = _load_serena_service_endpoint(agent_bundle, runtime_root)
+    serena_service = serena
     serena_knowledge_policy = _check_serena_knowledge_policy(agent_bundle)
     _ensure_codex_config(agent_bundle, runtime_root)
 
-    db_path = _inside_project(runtime_root / "state" / "agent-team.db")
-    SQLiteMessageQueue(db_path)
+    db_path = _inside_runtime(
+        runtime_root, runtime_root / "state" / "agent-team.db"
+    )
+    AxStateStore(db_path).initialize()
 
     return _result(
         operation="initialize",
@@ -912,13 +1044,10 @@ def initialize(runtime_root: Path) -> dict[str, Any]:
 
 
 def check(runtime_root: Path) -> dict[str, Any]:
-    serena = _check_serena_initialized()
-    _load_serena_service_endpoint_from_path(
-        _configured_team_path("serena_service"), runtime_root
-    )
     _check_runtime_layout(runtime_root)
     python_dependencies = _check_python_dependencies()
-    sequential_thinking = _check_sequential_thinking(runtime_root)
+    serena = _serena_stdio_capability()
+    sequential_thinking = _check_sequential_thinking()
 
     catalog = load_catalog()
     skill_index = validate_catalog(catalog)
@@ -927,11 +1056,13 @@ def check(runtime_root: Path) -> dict[str, Any]:
     agent_bundle = load_and_validate_agents()
     _check_agent_mirror(agent_bundle)
     context_profiles = _check_context_profiles(agent_bundle)
-    serena_service = _load_serena_service_endpoint(agent_bundle, runtime_root)
+    serena_service = serena
     serena_knowledge_policy = _check_serena_knowledge_policy(agent_bundle)
     _check_codex_config(agent_bundle, runtime_root)
 
-    db_path = _inside_project(runtime_root / "state" / "agent-team.db")
+    db_path = _inside_runtime(
+        runtime_root, runtime_root / "state" / "agent-team.db"
+    )
     _check_database(db_path)
 
     return _result(
@@ -950,16 +1081,80 @@ def check(runtime_root: Path) -> dict[str, Any]:
     )
 
 
+def check_mcp(runtime_root: Path, names: Sequence[str]) -> dict[str, Any]:
+    """Check only the requested MCP configuration and executable dependency.
+
+    This intentionally avoids the unrelated team database, skill mirror, Serena HTTP
+    service, and full generated-config checks so a focused MCP diagnosis is usable
+    before the rest of the control plane is initialized.
+    """
+
+    if not CODEX_CONFIG_PATH.is_file():
+        raise InitializationError(f"Project Codex config not found: {CODEX_CONFIG_PATH}")
+    with CODEX_CONFIG_PATH.open("rb") as stream:
+        config = tomllib.load(stream)
+    servers = config.get("mcp_servers")
+    if not isinstance(servers, dict):
+        raise InitializationError("Project Codex config must define MCP servers.")
+
+    project_cwd = str(PROJECT_ROOT)
+    expected = {
+        "serena": {
+            "command": "serena",
+            "args": _serena_stdio_args(),
+            "cwd": project_cwd,
+            "enabled": True,
+            "required": True,
+            "enabled_tools": list(SERENA_ENABLED_TOOLS),
+        },
+    }
+    checked: dict[str, Any] = {}
+    for name in names:
+        if name == "sequentialthinking":
+            expected[name] = {
+                "command": "node",
+                "args": [str(_sequential_thinking_paths()["entrypoint"])],
+                "cwd": project_cwd,
+                "enabled": True,
+                "required": True,
+            }
+        server = servers.get(name)
+        if not isinstance(server, dict):
+            raise InitializationError(f"Project Codex config does not define MCP server: {name}")
+        mismatched = {
+            field: {"expected": value, "actual": server.get(field)}
+            for field, value in expected[name].items()
+            if server.get(field) != value
+        }
+        if mismatched:
+            raise InitializationError(
+                f"MCP server does not match sample_config.toml semantics: "
+                f"{name}: {mismatched}"
+            )
+        if name == "serena":
+            _check_serena_tool_allowlist(server)
+            checked[name] = {"available": True, **_serena_stdio_capability()}
+        else:
+            checked[name] = {"available": True, **_check_sequential_thinking()}
+    return {
+        "status": "ok",
+        "operation": "check-mcp",
+        "runtime_root": str(runtime_root),
+        "checked": checked,
+    }
+
+
 def refresh_mcp_config(runtime_root: Path) -> dict[str, Any]:
-    """Regenerate only the managed project-local MCP configuration after endpoint rotation."""
+    """Regenerate the managed MCP configuration from the stdio sample contract."""
     agent_bundle = load_and_validate_agents()
-    serena_service = _load_serena_service_endpoint(agent_bundle, runtime_root)
+    serena = _serena_stdio_capability()
+    _check_sequential_thinking()
     _ensure_codex_config(agent_bundle, runtime_root)
     return {
         "status": "ok",
         "operation": "refresh-mcp-config",
         "codex_config": str(CODEX_CONFIG_PATH),
-        "serena_service": serena_service,
+        "serena": serena,
     }
 
 
@@ -968,8 +1163,13 @@ def build_parser() -> argparse.ArgumentParser:
         description="Initialize the project-local agent team control plane."
     )
     parser.add_argument(
+        "--ax-root",
         "--runtime-root",
-        help="Project-relative runtime root. Default: .agent-team",
+        dest="ax_root",
+        help=(
+            "Absolute independent AX_ROOT. Defaults to "
+            "the LOCALAPPDATA/agent-team-ax/<source-name> directory."
+        ),
     )
     parser.add_argument(
         "--check",
@@ -977,9 +1177,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify the initialized control plane without modifying it.",
     )
     parser.add_argument(
+        "--install-mcp-dependencies",
+        action="store_true",
+        help="Install Serena/Sequential Thinking dependencies without changing Codex configuration.",
+    )
+    parser.add_argument(
+        "--check-mcp-dependencies",
+        action="store_true",
+        help="Verify Serena/Sequential Thinking dependencies without changing configuration.",
+    )
+    parser.add_argument(
+        "--check-mcp",
+        action="append",
+        choices=sorted(SUPPORTED_MCP_CAPABILITIES),
+        help="Check one MCP only. Repeat for multiple MCPs.",
+    )
+    parser.add_argument(
         "--refresh-mcp-config",
         action="store_true",
-        help="Regenerate only the managed MCP configuration from the persisted Serena HTTP endpoint.",
+        help="Regenerate the managed MCP configuration from the Serena stdio sample contract.",
     )
     parser.add_argument(
         "--json",
@@ -1010,30 +1226,53 @@ def _print_result(result: dict[str, Any], as_json: bool) -> None:
     )
     for seat in result["seats"]:
         print(
-            f"- {seat['seat_id']}: {seat['role_key']} | "
-            f"{seat['model']} | {seat['reasoning_effort']} | "
-            f"{seat['sandbox_mode']}"
+            f"- {seat['seat_id'] or seat['slot_id']}: {seat['slot_key']} | "
+            f"{','.join(seat['eligible_capabilities'])} | {seat['slot_type']}"
         )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.check and args.refresh_mcp_config:
-            raise InitializationError("--check and --refresh-mcp-config cannot be combined.")
-        runtime_root = _resolve_runtime_root(args.runtime_root)
-        if args.refresh_mcp_config:
+        selected_operations = sum(
+            bool(value)
+            for value in (
+                args.check,
+                args.install_mcp_dependencies,
+                args.check_mcp_dependencies,
+                args.check_mcp,
+                args.refresh_mcp_config,
+            )
+        )
+        if selected_operations > 1:
+            raise InitializationError(
+                "Use only one of --check, --install-mcp-dependencies, "
+                "--check-mcp-dependencies, --check-mcp, or --refresh-mcp-config "
+                "per invocation."
+            )
+        runtime_root = _resolve_runtime_root(args.ax_root)
+        if args.install_mcp_dependencies:
+            result = install_mcp_dependencies(runtime_root)
+        elif args.check_mcp_dependencies:
+            result = check_mcp_dependencies(runtime_root)
+        elif args.check_mcp:
+            result = check_mcp(runtime_root, args.check_mcp)
+        elif args.refresh_mcp_config:
             result = refresh_mcp_config(runtime_root)
-            if args.json:
-                print(json.dumps(result, ensure_ascii=False, indent=2))
-            else:
-                print(
-                    "Agent team MCP configuration refreshed: "
-                    f"Serena={result['serena_service']['url']}"
-                )
         else:
             result = check(runtime_root) if args.check else initialize(runtime_root)
-            _print_result(result, args.json)
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif result["operation"] == "refresh-mcp-config":
+            print("Agent team MCP configuration refreshed: Serena stdio")
+        elif result["operation"] in {
+            "install-mcp-dependencies",
+            "check-mcp-dependencies",
+            "check-mcp",
+        }:
+            print(f"Agent team {result['operation']} completed.")
+        else:
+            _print_result(result, False)
         return 0
     except (
         AgentConfigurationError,

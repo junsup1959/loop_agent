@@ -1,0 +1,8 @@
+[toolchain]
+id = "python"
+version = "1.0.0"
+technology_ids = ["python", "local-data"]
+manifest_names = ["pyproject.toml", "requirements.txt", "setup.cfg", "setup.py", "tox.ini"]
+executables = ["python"]
+version_evidence = ["python --version"]
+validation_families = ["unit", "integration", "type", "lint", "package"]

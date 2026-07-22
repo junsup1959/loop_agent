@@ -1,0 +1,8 @@
+[toolchain]
+id = "powershell"
+version = "1.0.0"
+technology_ids = ["powershell", "desktop-ui", "local-data"]
+manifest_names = ["*.psd1", "*.psm1", "PSScriptAnalyzerSettings.psd1"]
+executables = ["powershell", "pwsh"]
+version_evidence = ["$PSVersionTable"]
+validation_families = ["parse", "analyze", "unit", "integration", "repeat"]

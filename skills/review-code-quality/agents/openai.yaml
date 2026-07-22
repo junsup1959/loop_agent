@@ -1,6 +1,0 @@
-interface:
-  display_name: "Review Code Quality"
-  short_description: "Find correctness and regression risks"
-  default_prompt: "Use $review-code-quality to review the current diff for actionable defects and risks."
-policy:
-  allow_implicit_invocation: false

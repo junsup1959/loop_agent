@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-team-professional-profile-catalog-v1",
+  "title": "Agent-Team Professional Profile Catalog",
+  "type": "object",
+  "required": ["catalog", "references"],
+  "properties": {
+    "catalog": {
+      "type": "object",
+      "required": ["version", "single_skill_id", "compiled_schema"],
+      "properties": {
+        "version": {"const": 1},
+        "single_skill_id": {"const": "professional-profile-runtime"},
+        "compiled_schema": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "version", "path", "sha256"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9-]+/[a-z0-9-]+$"},
+          "category": {
+            "enum": ["role", "gate_or_task", "technology", "toolchain"]
+          },
+          "version": {"type": "string"},
+          "path": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

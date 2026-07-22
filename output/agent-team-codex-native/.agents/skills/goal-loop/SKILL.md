@@ -11,6 +11,10 @@ Operate the goal-level controller. Coordinate work; do not perform an individual
 
 Require a bounded objective, authority boundary, acceptance criteria, budget, local repository identity, and durable goal state. If any is missing, emit `NEED_MORE_CONTEXT` or `GOAL_BLOCKED`; do not infer the missing contract.
 
+## Native Goal Mode Boundary
+
+Never call `create_goal` or `update_goal`, invoke `/goal`, or use any Codex native persisted-goal feature. Keep durable goal state exclusively in the project-local agent-team SQLite/control plane. If that control plane is unavailable, emit `GOAL_BLOCKED`; do not substitute Codex native Goals.
+
 ## Supervisory Cycle
 
 1. Load the current goal, Plan IR revision, module states, required gates, budgets, and evidence references.

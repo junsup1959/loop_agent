@@ -14,21 +14,24 @@ import subprocess
 import sys
 import tomllib
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 try:
+    from .agent_team_layout import AgentTeamLayout
     from .agent_team_queue import SQLiteMessageQueue
     from .project_agents import AgentConfigurationError, load_and_validate
 except ImportError:
+    from agent_team_layout import AgentTeamLayout
     from agent_team_queue import SQLiteMessageQueue
     from project_agents import AgentConfigurationError, load_and_validate
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_POLICY_PATH = PROJECT_ROOT / "agents" / "serena-knowledge-policy.toml"
+LAYOUT = AgentTeamLayout.discover(Path(__file__))
+PROJECT_ROOT = LAYOUT.source_root
+DEFAULT_POLICY_PATH = LAYOUT.config_root / "serena-knowledge-policy.toml"
 SERENA_CONFIG_RELATIVE_PATH = Path(".serena") / "project.yml"
 SERENA_MEMORY_RELATIVE_PATH = Path(".serena") / "memories"
 SUPPORTED_EVIDENCE_KINDS = frozenset(
@@ -42,6 +45,8 @@ SUPPORTED_EVIDENCE_KINDS = frozenset(
 )
 SUPPORTED_CONFIDENCE = frozenset({"confirmed", "likely", "unknown"})
 EVIDENCE_ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9_-]{2,119}$")
+_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_OID_PATTERN = re.compile(r"^[0-9a-f]{40,64}$")
 
 
 class ProjectKnowledgeError(RuntimeError):
@@ -50,7 +55,10 @@ class ProjectKnowledgeError(RuntimeError):
 
 @dataclass(frozen=True)
 class SerenaKnowledgePolicy:
+    policy_path: Path
+    policy_sha256: str
     owner_role: str
+    owner_capability: str
     architecture_evidence_role: str
     state_store: str
     allow_all_roles_read: bool
@@ -69,6 +77,49 @@ class SerenaKnowledgePolicy:
     max_semantic_chars: int
     require_target_oid: bool
     role_memory_refs: dict[str, tuple[str, ...]]
+    initial_instructions_required: bool
+    source_oid_match_required: bool
+    developer_consumption_before_mutation: bool
+    refresh_trigger_ids: tuple[str, ...]
+    maximum_age_hours: int
+    allowed_content_classes: tuple[str, ...]
+    prohibited_terms: tuple[str, ...]
+    transition_memory_refs: dict[str, tuple[str, ...]]
+
+
+@dataclass(frozen=True)
+class SerenaMemoryReference:
+    name: str
+    memory_ref: str
+    sha256: str
+
+
+@dataclass(frozen=True)
+class SerenaOnboardingSnapshot:
+    snapshot_id: str
+    repository_id: str
+    source_oid: str
+    policy_sha256: str
+    memory_bindings: tuple[SerenaMemoryReference, ...]
+    evidence_refs: tuple[str, ...]
+    trigger_ids: tuple[str, ...]
+    initial_instructions_receipt_sha256: str
+    refreshed: bool
+    state_store: Any = field(default=None, repr=False, compare=False)
+
+    def as_contract_binding(
+        self, *, consumption_required: bool
+    ) -> dict[str, Any]:
+        return {
+            "snapshot_id": self.snapshot_id,
+            "source_oid": self.source_oid,
+            "policy_sha256": self.policy_sha256,
+            "memory_bindings": [
+                {"name": item.name, "sha256": item.sha256}
+                for item in self.memory_bindings
+            ],
+            "consumption_receipt_required": consumption_required,
+        }
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
@@ -113,13 +164,28 @@ def load_policy(path: str | Path = DEFAULT_POLICY_PATH) -> SerenaKnowledgePolicy
     detection = data.get("detection")
     context = data.get("context")
     role_memory_refs = data.get("role_memory_refs")
+    onboarding = data.get("onboarding")
+    freshness = data.get("freshness")
+    content_boundary = data.get("content_boundary")
+    transition_memory_refs = data.get("transition_memory_refs")
     if not all(
         isinstance(section, dict)
-        for section in (knowledge, bootstrap, refresh, detection, context, role_memory_refs)
+        for section in (
+            knowledge,
+            bootstrap,
+            refresh,
+            detection,
+            context,
+            role_memory_refs,
+            onboarding,
+            freshness,
+            content_boundary,
+            transition_memory_refs,
+        )
     ):
         raise ProjectKnowledgeError("Knowledge policy is missing a required table")
-    if knowledge.get("version") != 1:
-        raise ProjectKnowledgeError("Knowledge policy version must be 1")
+    if knowledge.get("version") != 2:
+        raise ProjectKnowledgeError("Knowledge policy version must be 2")
     if knowledge.get("state_store") != "sqlite":
         raise ProjectKnowledgeError("Knowledge policy state_store must be 'sqlite'")
     if knowledge.get("shared_memory_publish_mode") != "pl_acknowledged":
@@ -179,8 +245,35 @@ def load_policy(path: str | Path = DEFAULT_POLICY_PATH) -> SerenaKnowledgePolicy
             "refresh.accepted_decisions must contain refreshed, no_change, and deferred"
         )
 
+    transition_refs: dict[str, tuple[str, ...]] = {}
+    for transition_id, names in transition_memory_refs.items():
+        transition_refs[_require_string(transition_id, "transition_memory_refs key")] = (
+            _require_string_list(names, f"transition_memory_refs.{transition_id}")
+        )
+    unknown_transition_refs = {
+        name
+        for names in transition_refs.values()
+        for name in names
+        if name not in known_memory_names
+    }
+    if unknown_transition_refs:
+        raise ProjectKnowledgeError(
+            f"transition memory refs are unknown: {sorted(unknown_transition_refs)}"
+        )
+    if onboarding.get("initial_instructions_required") is not True:
+        raise ProjectKnowledgeError("Serena initial_instructions must be required")
+    if onboarding.get("source_oid_match_required") is not True:
+        raise ProjectKnowledgeError("Serena snapshots must match the source OID")
+    if onboarding.get("developer_consumption_before_mutation") is not True:
+        raise ProjectKnowledgeError("developer consumption-before-mutation is required")
+
     return SerenaKnowledgePolicy(
+        policy_path=policy_path,
+        policy_sha256=hashlib.sha256(policy_path.read_bytes()).hexdigest(),
         owner_role=_require_string(knowledge.get("owner_role"), "knowledge.owner_role"),
+        owner_capability=_require_string(
+            knowledge.get("owner_capability"), "knowledge.owner_capability"
+        ),
         architecture_evidence_role=_require_string(
             knowledge.get("architecture_evidence_role"),
             "knowledge.architecture_evidence_role",
@@ -210,6 +303,279 @@ def load_policy(path: str | Path = DEFAULT_POLICY_PATH) -> SerenaKnowledgePolicy
         ),
         require_target_oid=context["require_target_oid"],
         role_memory_refs=refs,
+        initial_instructions_required=True,
+        source_oid_match_required=True,
+        developer_consumption_before_mutation=True,
+        refresh_trigger_ids=_require_string_list(
+            freshness.get("trigger_ids"), "freshness.trigger_ids"
+        ),
+        maximum_age_hours=_require_positive_integer(
+            freshness.get("maximum_age_hours"), "freshness.maximum_age_hours"
+        ),
+        allowed_content_classes=_require_string_list(
+            content_boundary.get("allowed_content_classes"),
+            "content_boundary.allowed_content_classes",
+        ),
+        prohibited_terms=_require_string_list(
+            content_boundary.get("prohibited_terms"),
+            "content_boundary.prohibited_terms",
+        ),
+        transition_memory_refs=transition_refs,
+    )
+
+
+def required_memories_for_transition(
+    transition_id: str,
+    *,
+    policy_path: str | Path = DEFAULT_POLICY_PATH,
+) -> tuple[str, ...]:
+    """Return the policy-pinned minimum named memories for one transition."""
+
+    transition_id = _require_string(transition_id, "transition_id")
+    policy = load_policy(policy_path)
+    try:
+        return policy.transition_memory_refs[transition_id]
+    except KeyError as exc:
+        raise ProjectKnowledgeError(
+            f"transition has no Serena memory selection: {transition_id}"
+        ) from exc
+
+
+def _evidence_mapping(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if hasattr(value, "__dataclass_fields__"):
+        return asdict(value)
+    raise ProjectKnowledgeError("Serena onboarding evidence must be an object")
+
+
+def _repository_values(repo: Any) -> tuple[str, str, Any]:
+    if isinstance(repo, Mapping):
+        repository_id = repo.get("repository_id") or repo.get("repo_id")
+        source_oid = repo.get("source_oid")
+        state_store = repo.get("state_store")
+    else:
+        repository_id = getattr(repo, "repository_id", None) or getattr(
+            repo, "repo_id", None
+        )
+        source_oid = getattr(repo, "source_oid", None)
+        state_store = getattr(repo, "state_store", None)
+    repository_id = _require_string(repository_id, "repository_id")
+    if not isinstance(source_oid, str) or not _OID_PATTERN.fullmatch(source_oid):
+        raise ProjectKnowledgeError("repository source_oid must be a full lowercase OID")
+    return repository_id, source_oid, state_store
+
+
+def _prohibited_memory_reference(reference: str) -> bool:
+    normalized = reference.replace("\\", "/").casefold()
+    return (
+        normalized in {"*", "all"}
+        or normalized.startswith("docs/")
+        or "://docs/" in normalized
+        or "/docs/" in normalized
+    )
+
+
+def _validate_shared_memory_content(
+    *,
+    name: str,
+    content: str,
+    content_class: str,
+    policy: SerenaKnowledgePolicy,
+) -> None:
+    if content_class == "rapid_code_summary":
+        raise ProjectKnowledgeError(
+            f"{name} is rapidly changing code knowledge; store it as an activation artifact"
+        )
+    if content_class not in policy.allowed_content_classes:
+        raise ProjectKnowledgeError(f"unsupported Serena content class: {content_class}")
+    lowered = content.casefold()
+    for term in policy.prohibited_terms:
+        if term.casefold() in lowered:
+            raise ProjectKnowledgeError(
+                f"shared Serena memory contains prohibited live/team state: {term}"
+            )
+    if re.search(r"(?<![0-9a-f])[0-9a-f]{40,64}(?![0-9a-f])", lowered):
+        raise ProjectKnowledgeError("shared Serena memory must not contain a current Git OID")
+
+
+def ensure_serena_onboarding(
+    repo: Any,
+    evidence: Any,
+    required_memories: tuple[str, ...],
+    *,
+    policy_path: str | Path = DEFAULT_POLICY_PATH,
+) -> SerenaOnboardingSnapshot:
+    """Validate and persist one PL-owned, source-pinned onboarding snapshot."""
+
+    policy = load_policy(policy_path)
+    repository_id, source_oid, state_store = _repository_values(repo)
+    values = _evidence_mapping(evidence)
+    if values.get("publisher_capability") != policy.owner_capability:
+        raise ProjectKnowledgeError("only the PL capability may publish shared Serena memory")
+    if values.get("source_oid") != source_oid:
+        raise ProjectKnowledgeError("Serena onboarding evidence source OID changed")
+    if values.get("policy_sha256") != policy.policy_sha256:
+        raise ProjectKnowledgeError("Serena onboarding policy digest changed")
+    if not required_memories or len(required_memories) != len(set(required_memories)):
+        raise ProjectKnowledgeError("required_memories must be a unique non-empty tuple")
+    unknown = set(required_memories) - set(policy.required_memory_names)
+    if unknown:
+        raise ProjectKnowledgeError(f"unknown required Serena memories: {sorted(unknown)}")
+    if len(required_memories) > policy.max_memory_refs:
+        raise ProjectKnowledgeError("required Serena memories exceed the minimum-reference cap")
+    transition_id = values.get("transition_id")
+    if transition_id is not None:
+        expected_memories = policy.transition_memory_refs.get(str(transition_id))
+        if expected_memories is None:
+            raise ProjectKnowledgeError(
+                f"transition has no Serena memory selection: {transition_id}"
+            )
+        if tuple(required_memories) != expected_memories:
+            raise ProjectKnowledgeError(
+                "required_memories must equal the transition-specific minimum"
+            )
+
+    initial = values.get("initial_instructions")
+    if not isinstance(initial, Mapping):
+        raise ProjectKnowledgeError("initial_instructions evidence is required")
+    if (
+        initial.get("tool_name") != "initial_instructions"
+        or initial.get("available") is not True
+        or initial.get("invoked") is not True
+        or not isinstance(initial.get("evidence_sha256"), str)
+        or not _SHA256_PATTERN.fullmatch(initial["evidence_sha256"])
+    ):
+        raise ProjectKnowledgeError(
+            "initial_instructions must be available, invoked, and digest receipted"
+        )
+
+    raw_memories = values.get("memory_bindings")
+    if not isinstance(raw_memories, list):
+        raise ProjectKnowledgeError("memory_bindings must be an array")
+    memory_index: dict[str, Mapping[str, Any]] = {}
+    for raw in raw_memories:
+        if not isinstance(raw, Mapping):
+            raise ProjectKnowledgeError("memory binding must be an object")
+        name = raw.get("name") or raw.get("memory_name")
+        if (
+            not isinstance(name, str)
+            or name not in policy.required_memory_names
+            or name in {"*", "all"}
+            or name in memory_index
+        ):
+            raise ProjectKnowledgeError("memory names must be unique")
+        memory_index[name] = raw
+    missing = set(required_memories) - set(memory_index)
+    trigger_ids = set(values.get("trigger_ids", []))
+    if values.get("previous_snapshot_id") is None:
+        trigger_ids.add("new-repository")
+    if missing:
+        trigger_ids.add("missing-required-memory")
+    if (
+        values.get("material_project_change") is True
+        or values.get("material_config_change") is True
+        or values.get("source_fingerprint_changed") is True
+        or (
+            values.get("previous_source_oid") is not None
+            and values.get("previous_source_oid") != source_oid
+        )
+        or (
+            values.get("previous_policy_sha256") is not None
+            and values.get("previous_policy_sha256") != policy.policy_sha256
+        )
+    ):
+        trigger_ids.add("material-project-change")
+    snapshot_age_hours = values.get("snapshot_age_hours")
+    if snapshot_age_hours is not None and (
+        not isinstance(snapshot_age_hours, (int, float))
+        or isinstance(snapshot_age_hours, bool)
+        or snapshot_age_hours < 0
+    ):
+        raise ProjectKnowledgeError("snapshot_age_hours must be non-negative")
+    if values.get("stale") is True or (
+        snapshot_age_hours is not None
+        and snapshot_age_hours > policy.maximum_age_hours
+    ):
+        trigger_ids.add("stale-project-knowledge")
+    unknown_triggers = trigger_ids - set(policy.refresh_trigger_ids)
+    if unknown_triggers:
+        raise ProjectKnowledgeError(f"unknown onboarding triggers: {sorted(unknown_triggers)}")
+    if trigger_ids and values.get("refresh_completed") is not True:
+        raise ProjectKnowledgeError(
+            f"Serena onboarding refresh is required for: {sorted(trigger_ids)}"
+        )
+    if missing:
+        raise ProjectKnowledgeError(f"required Serena memories are missing: {sorted(missing)}")
+
+    selected: list[SerenaMemoryReference] = []
+    selected_references: set[str] = set()
+    for name in required_memories:
+        raw = memory_index[name]
+        reference = raw.get("ref") or raw.get("memory_ref")
+        digest = raw.get("sha256") or raw.get("memory_sha256")
+        content = raw.get("content")
+        content_class = raw.get("content_class")
+        if (
+            not isinstance(reference, str)
+            or not reference
+            or _prohibited_memory_reference(reference)
+            or reference in selected_references
+            or not isinstance(content, str)
+            or not isinstance(digest, str)
+            or not _SHA256_PATTERN.fullmatch(digest)
+            or hashlib.sha256(content.encode("utf-8")).hexdigest() != digest
+        ):
+            raise ProjectKnowledgeError(f"Serena memory binding is invalid: {name}")
+        _validate_shared_memory_content(
+            name=name,
+            content=content,
+            content_class=str(content_class),
+            policy=policy,
+        )
+        selected.append(SerenaMemoryReference(name, reference, digest))
+        selected_references.add(reference)
+    evidence_refs = _require_string_list(values.get("evidence_refs"), "evidence_refs")
+    memory_bindings = [
+        {
+            "memory_name": item.name,
+            "memory_ref": item.memory_ref,
+            "memory_sha256": item.sha256,
+        }
+        for item in selected
+    ]
+    if state_store is not None:
+        snapshot_id = state_store.record_serena_onboarding_snapshot(
+            repo_id=repository_id,
+            source_oid=source_oid,
+            policy_digest=policy.policy_sha256,
+            memory_bindings=memory_bindings,
+        )
+    else:
+        manifest_digest = hashlib.sha256(
+            json.dumps(memory_bindings, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        snapshot_id = f"serena-snapshot-{manifest_digest[:32]}"
+    previous_snapshot_id = values.get("previous_snapshot_id")
+    if (
+        previous_snapshot_id is not None
+        and not trigger_ids
+        and snapshot_id != previous_snapshot_id
+    ):
+        raise ProjectKnowledgeError(
+            "fresh Serena snapshot bytes changed without a refresh trigger"
+        )
+    return SerenaOnboardingSnapshot(
+        snapshot_id=snapshot_id,
+        repository_id=repository_id,
+        source_oid=source_oid,
+        policy_sha256=policy.policy_sha256,
+        memory_bindings=tuple(selected),
+        evidence_refs=evidence_refs,
+        trigger_ids=tuple(sorted(trigger_ids)),
+        initial_instructions_receipt_sha256=initial["evidence_sha256"],
+        refreshed=bool(trigger_ids),
+        state_store=state_store,
     )
 
 
@@ -528,10 +894,10 @@ def _validate_pl_seat(owner_seat_id: str, policy: SerenaKnowledgePolicy) -> None
     seat = bundle["seats"].get(owner_seat_id)
     if seat is None:
         raise ProjectKnowledgeError(f"Unknown owner seat: {owner_seat_id}")
-    if seat["role_key"] != policy.owner_role:
+    if policy.owner_capability not in seat.get("capabilities", []):
         raise ProjectKnowledgeError(
-            f"Shared Serena memory acknowledgement requires role {policy.owner_role!r}, "
-            f"not {seat['role_key']!r}"
+            f"Shared Serena memory acknowledgement requires capability "
+            f"{policy.owner_capability!r}"
         )
 
 
@@ -770,7 +1136,7 @@ def _record_evidence(args: argparse.Namespace, policy: SerenaKnowledgePolicy) ->
         except AgentConfigurationError as exc:
             raise ProjectKnowledgeError(f"Cannot validate evidence producer: {exc}") from exc
         seat = bundle["seats"].get(args.producer_seat)
-        if seat is None or seat["role_key"] != args.producer_role:
+        if seat is None or args.producer_role not in seat.get("capabilities", []):
             raise ProjectKnowledgeError(
                 "producer_seat must belong to producer_role for Serena evidence publication"
             )

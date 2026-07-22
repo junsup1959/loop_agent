@@ -1,16 +1,23 @@
 ---
 name: serena-project-setup
-description: Prepare a local project for the optional project-local Serena stdio MCP capability. Use when registering or repairing a Serena project, selecting language support, indexing and health-checking source analysis, initializing Serena memories, or configuring contexts and modes before an agent team starts.
+version: 2.0.0
+description: Run the mandatory PL-owned Serena onboarding and refresh lifecycle for project-local, slow-changing target-project knowledge before developer implementation or rework.
 ---
 
-# Serena Project Setup
+# Serena Project Setup 2.0.0
 
-Prepare Serena deliberately before enabling the optional MCP capability. Keep the project setup local; Codex starts Serena through stdio for each MCP client and does not use a shared HTTP service.
+Use this Skill only under the PL capability. It prepares the project-local Serena
+stdio MCP and publishes the minimum source-OID-pinned project knowledge required
+by an implementation or rework transition. Other capabilities may read the named
+bindings but must not publish or refresh shared memory.
 
-## Setup Flow
+## Mandatory PL Onboarding Lifecycle
 
-1. Confirm the target project is the project the agent team will work on.
-2. Inspect the installed CLI instead of assuming an option:
+1. Confirm the exact registered repository and full source OID. Read
+   `agents/serena-memory-boundary.md` before inspecting proposed memory content.
+2. Verify `initial_instructions` is available and invoke it. Preserve a SHA-256
+   evidence receipt; absence, non-use, or invalid evidence fails onboarding.
+3. Inspect the installed CLI rather than assuming an option:
 
    ```powershell
    serena --help
@@ -18,7 +25,9 @@ Prepare Serena deliberately before enabling the optional MCP capability. Keep th
    serena start-mcp-server --help
    ```
 
-3. Create or repair project-local Serena configuration from a normal PowerShell session, outside an active Codex sandbox. Do not change user-level Serena configuration unless the CLI reports an unavoidable prerequisite.
+4. Create or repair project-local Serena configuration from a normal PowerShell
+   session outside an active Codex sandbox. Do not change user-level Serena
+   configuration unless the CLI reports an unavoidable prerequisite.
 
    ```powershell
    Set-Location <target-project>
@@ -28,8 +37,19 @@ Prepare Serena deliberately before enabling the optional MCP capability. Keep th
    serena memories initialize
    ```
 
-4. Inspect `.serena/project.yml`. Configure only the languages and workspace folders that belong to the target project. Resolve a failed health check before enabling the team MCP configuration.
-5. When a custom context, mode, or prompt override is needed, inspect before creating it:
+5. Inspect `.serena/project.yml`. Configure only languages and workspace folders
+   belonging to the target repository. Resolve health-check failures first.
+6. Create or refresh the five canonical memories only as needed: `core`,
+   `tech_stack`, `suggested_commands`, `conventions`, and `task_completion`.
+   A new repository, missing required memory, stale knowledge, or material
+   project/configuration change requires refresh. Unchanged fresh bytes reuse the
+   existing snapshot.
+7. Call `ensure_serena_onboarding(repo, evidence, required_memories)` with PL
+   capability evidence, exact source OID, policy digest, named refs, content
+   digests, and the transition-specific minimum from
+   `agents/serena-knowledge-policy.toml`. Persist the returned snapshot before
+   issuing the developer handoff.
+8. When a custom context or mode is required, inspect before creating it:
 
    ```powershell
    serena context list
@@ -37,7 +57,7 @@ Prepare Serena deliberately before enabling the optional MCP capability. Keep th
    serena prompts list
    ```
 
-   Create or edit only a project-specific customization with a stated team purpose.
+   Create only project-specific customizations. Prompt text is not shared memory.
 
 ## Stdio MCP Configuration
 
@@ -52,6 +72,19 @@ The generated entry uses `serena start-mcp-server --project-from-cwd --context c
 
 ## Knowledge Boundary
 
-After setup, all roles may read targeted Serena memories and perform semantic exploration. The PL alone publishes or refreshes shared project memory; other roles provide concise, evidence-backed proposals through SQLite.
+Before initial onboarding or a shared-memory refresh, read `agents/serena-memory-boundary.md` in canonical source or `config/agent-team/serena-memory-boundary.md` in a generated bundle. After setup, all roles may read targeted Serena memories and perform semantic exploration. The PL alone publishes or refreshes shared project memory; other roles provide concise, evidence-backed proposals through SQLite.
 
-Do not preload every memory, store active task state in Serena memory, or treat MCP runtime state as Serena memory.
+Publish only stable project structure, technology, conventions, coding guidance,
+and build/test commands supported by repository evidence. Reject active work
+items, current diffs, Git/OID approvals, leases, team roles, workflows,
+activation contracts, prompts, and per-run results. Those belong in SQLite, Git,
+or activation artifacts.
+
+Bind only the transition-specific named refs. Wildcards, duplicate or missing
+names, `docs/` references, changed bytes, invalid SHA-256 values, or source/policy
+digest mismatches fail closed.
+
+Before the first developer source mutation, the developer must read every named
+binding in the accepted contract. The TaskFlow preflight records the matching
+Serena consumption receipts in the v4 StateStore. Result receipts and required
+MCP usage receipts must match the same contract bindings; there is no fallback.

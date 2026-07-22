@@ -6,45 +6,56 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 
 | File | Responsibility |
 |---|---|
-| `install_mcp_dependencies.bat` | External installer for Serena CLI and the project-local Sequential Thinking dependency |
-| `setup_agent_team.bat` | External project setup for core state, Serena service, Codex configuration, and both MCP checks |
-| `init_agent_team.py` | Core team initialization, separated MCP dependency/install/configuration operations, URL refresh, and verification |
+| `agent_team_layout.py` | Canonical root-source versus generated-bundle path discovery |
+| `build_agent_team_bundle.py` | Guarded deterministic temporary bundle materialization and parity checks |
+| `init_agent_team.py` | Idempotent team initialization, MCP dependency management, and non-mutating verification |
 | `project_agents.py` | Random seat initialization, role/profile validation, Codex agent compilation, and seat-to-skill resolution |
 | `project_skills.py` | Project-local expertise catalog validation, synchronization, and role eligibility |
 | `agent_team_queue.py` | SQLite durable message queue |
 | `agent_team_dispatcher.py` | UDP wake-up and durable outbox polling |
 | `agent_team_context.py` | Budgeted role-specific Context Compiler and runner-skill injector |
 | `agent_team_message_viewer.py` | Human-only message and Git change viewer |
-| `agent_team_taskflow.py` | Airflow TaskFlow module and research iteration DAGs |
-| `agent_team_research.py` | Local research ledger, artifacts, source sharding, claims, conflicts, and reference-only context selection |
+| `agent_team_taskflow.py` | Airflow TaskFlow module iteration DAG |
 | `serena_project_knowledge.py` | Serena knowledge-state, evidence, and PL acknowledgement helper |
-| `rtk_pre_tool_use.py` | Codex PreToolUse enforcement for the project-local RTK command policy |
 | `message_echo_hook.sh` | Human-only echo after a message commit |
+
+## Canonical Source and Generated Bundle
+
+Repository-root `scripts/`, `agents/`, `skills/`, and `profile/` are the editable Agent-Team source. The existing architecture remains authoritative; this boundary supports its detailed worktree/runtime extension and does not create another orchestrator or workflow engine.
+
+`output/agent-team-codex-native/` is a generated delivery artifact. Do not hand-edit it after cutover. Root `.codex/skills/` is frozen legacy content, while `.agent-team/` is mutable runtime state; neither is a bundle source.
+
+Materialize and verify only an explicitly selected disposable destination during development:
+
+```powershell
+python .\scripts\build_agent_team_bundle.py `
+  --materialize `
+  --destination C:\temp\agent-team-bundle
+
+python .\scripts\build_agent_team_bundle.py `
+  --check `
+  --destination C:\temp\agent-team-bundle
+```
+
+The builder rejects unsafe or unowned destinations, preserves unknown files, removes only paths declared by its previous generated manifest, and keeps a stable byte/hash inventory. The real output bundle is materialized only by the release phase.
 
 ## First Installation and Repair
 
-Use two externally executed batch files for first installation or a clean checkout. Run them from a normal PowerShell or Command Prompt outside Codex, with the target project as the current directory. This bundle intentionally has no `AGENTS.md` and no bootstrap skill.
+Install the MCP runtime dependencies first, then initialize the team from a normal terminal. Sequential Thinking is installed globally because Codex loads it from npm's global module directory; Serena remains the installed `serena` CLI.
 
 ```powershell
-Set-Location <target-project>
-.\scripts\install_mcp_dependencies.bat --dry-run
-.\scripts\install_mcp_dependencies.bat
-.\scripts\setup_agent_team.bat --dry-run
-.\scripts\setup_agent_team.bat
+python .\scripts\init_agent_team.py --install-mcp-dependencies
+python .\scripts\init_agent_team.py
 ```
 
-`install_mcp_dependencies.bat` is the dependency phase. It installs the Serena CLI with `uv tool install -p 3.13 serena-agent` only when `serena.exe` is absent, installs the exact Sequential Thinking package into `.agent-team/mcp`, and strictly verifies both dependencies. It never creates `.codex/config.toml`, creates a Serena project, starts a Serena server, or calls `serena init` or `serena config edit`.
+MCP-only checks are deliberately focused: they validate the requested MCP's config and executable without requiring the team database, skill mirror, or a separate Serena HTTP service.
 
-`setup_agent_team.bat` is the project configuration phase. It initializes the core control plane, verifies the already-installed MCP dependencies, creates or indexes `.serena/project.yml`, initializes memories, starts the shared loopback HTTP service, configures both MCP entries, strictly checks both entries, and verifies the core control plane. It does not install an MCP dependency; dependency absence is a hard setup failure with a prompt to run the install batch first.
-
-`init_agent_team.py` remains the reusable core/control-plane command. Its plain invocation does not create or index a Serena project, change Serena CLI configuration, start a Serena server, or enable an MCP. Core initialization:
-
-1. verifies exact Python package pins from `scripts/requirements.txt` and installs missing or mismatched dependencies with `pip`;
-2. validates native project-local skills without creating a second mirror;
-3. generates Korean seat identities only when the registry does not exist;
-4. validates role-specific context profiles and compiles eight `.codex/agents/*.toml` files;
-5. generates `.codex/config.toml` with the current seat assignment comments, RTK hook, and `agents.max_threads = 8`;
-6. initializes `.agent-team/state/agent-team.db` and `.agent-team/state/mcp-capabilities.json`.
+```powershell
+python .\scripts\init_agent_team.py `
+  --check-mcp serena `
+  --check-mcp sequentialthinking `
+  --json
+```
 
 Repeated execution is safe and preserves existing seat identities.
 
@@ -56,15 +67,9 @@ python .\scripts\init_agent_team.py --check
 
 Use `--json` with either mode for machine-readable output.
 
-Codex loads project configuration only for a trusted project. Trust this project and restart or reload the Codex client after the first initialization so it loads `.codex/config.toml` and discovers the generated seat agents. The generated project config requests `workspace-write` with no additional writable roots and disabled network access; host-managed protected paths can still remain read-only.
+Codex loads project configuration only for a trusted project. Trust this project and restart or reload the Codex client after the first initialization so it loads `.codex/config.toml` and discovers the generated seat agents.
 
-## RTK Command Enforcement
-
-The initializer generates one project-local Codex `PreToolUse` hook. It reads `config/agent-team/RTK.md` without adding that document to normal agent context. The hook rewrites supported simple native commands such as `git status` to `rtk git status`; it permits already-prefixed commands and rejects complex commands until they use an explicit `rtk proxy` form. This is project-scoped and does not modify user-global Codex configuration.
-
-The hook applies only after the generated `.codex/config.toml` is trusted and reloaded by Codex. It does not affect a shell outside Codex or an external process that bypasses Codex tool hooks.
-
-If enabled Serena is restarted and receives another random port, do not rerun seat initialization. Refresh only the generated MCP URL, then reload Codex:
+If the Serena service is restarted and receives another random port, do not rerun seat initialization. Refresh only the generated MCP URL, then reload Codex:
 
 ```powershell
 python .\scripts\init_agent_team.py --refresh-mcp-config
@@ -72,19 +77,20 @@ python .\scripts\init_agent_team.py --refresh-mcp-config
 
 ## Project MCP Configuration
 
-The initializer writes only a managed project-local `.codex/config.toml` file. It configures:
+The initializer writes only a managed project-local `.codex/config.toml` file. Its MCP sections follow `sample_config.toml` semantics with project-local paths:
 
+- `serena`, started directly over stdio with `serena start-mcp-server --project-from-cwd`;
+- `sequentialthinking`, started by Node from npm's global module directory;
 - eight custom seat agents auto-discovered from `.codex/agents/`;
 - `agents.max_threads = 8` and `agents.max_depth = 1`.
-- `sandbox_mode = "workspace-write"`, `approval_policy = "on-request"`, no additional writable roots, and disabled network access.
 
-The `serena` and `sequentialthinking` MCP blocks are emitted only after explicit configuration. `setup_agent_team.bat` uses `--configure-mcp`, which refuses to provision a missing dependency; generic manual repair may use `--enable-mcp` when deliberate provisioning is intended. Both generated blocks use `required = false`. Their enabled state and the last known Serena URL are persisted in `.agent-team/state/mcp-capabilities.json`, so ordinary core initialization and `--check` do not probe or fail on MCP availability.
+`--check-mcp-dependencies` verifies both executable dependencies without changing configuration. `--refresh-mcp-config` regenerates the managed MCP configuration after a path or configuration repair.
 
-The Serena service manager selects a free loopback port before configuration generation; port `0` is never written to Codex configuration. A spawned role agent connects to that shared endpoint and never starts its own Serena process. The listener is local to one active project and must not be reused for a different project.
+All roles may use targeted Serena semantic exploration and only the named project-memory references selected for their activation. Tool availability does not grant role authority. The PL alone publishes, refreshes, renames, or deletes shared Serena project memories; other roles submit evidence-backed proposals through SQLite.
 
-All roles receive explicitly injected recommended-tool guidance. They may use targeted Serena semantic exploration and only the named project-memory references selected for their activation when Serena is enabled and available. Tool availability does not grant role authority. The PL alone publishes, refreshes, renames, or deletes shared Serena project memories; other roles submit evidence-backed proposals through SQLite.
+When an explicit Serena tool allowlist is emitted, it must include `initial_instructions`; otherwise coding activations cannot satisfy the required Serena startup contract.
 
-The former `mcp-package/` directory is not used. Sequential Thinking is installed by `--install-mcp-dependencies`; `setup_agent_team.bat` configures it only after the strict dependency check. Its absence never blocks a deliberately core-only initialization.
+The former `mcp-package/` directory is not used. Sequential Thinking is pinned and managed by global npm so the installer, generated config, and MCP-only check all resolve the same package path.
 
 ## Project Agent Seats
 
@@ -114,7 +120,7 @@ python .\scripts\project_agents.py list
 
 - PM, PL, TA, QA/SDET, and Build/Release use `gpt-5.6-terra`.
 - The three developer seats use `gpt-5.6-luna`.
-- `research-lane` accepts only developer seats, so simple shard reading, extraction, and structured summaries run on Luna. Research planning, synthesis, validation, review, and approval remain bound to their named organizational seats.
+- `research-lane` accepts only developer seats, so simple shard reading, extraction, and structured summaries run on Luna.
 
 Resolve one seat with an explicit skill packet:
 
@@ -152,18 +158,13 @@ Use the constraint file that matches the supported Python minor version. Airflow
 
 ## Bounded Context Injection
 
-`config/agent-team/context-profiles.toml` is the authoritative fail-closed budget for every role profile. The compiler never injects a whole thread, repository diff, or skill catalog.
+`agents/context-profiles.toml` is the authoritative fail-closed budget for every role profile. The compiler never injects a whole thread, repository diff, or skill catalog.
 
 - Messages are limited to the same `thread_id`, `work_item_id`, and target role.
 - Git paths are recomputed from the base/head OIDs. Explicit `context_paths` must be present in that authoritative delta.
 - Without explicit paths, the compiler prefers paths named by selected messages and only then uses a capped Git-delta fallback.
 - Each profile caps messages, message characters, snapshot characters, paths, diff characters, commits, selected skills, selected skill characters, and total packet size. Caller-supplied limits can only lower a cap.
 - `selected_skill_ids` requires `actor_seat_id`; the seat resolver validates role eligibility and the runner materializes only those exact `SKILL.md` files.
-- A seat-bound activation also materializes exactly `config/agent-team/activation-instructions.md`. The artifact pins its path, SHA-256, and character count; the runner fails closed if it changes. Its characters count toward the packet budget.
-- A seat-bound activation also materializes exactly `config/agent-team/recommended-tools.md`. It remains visible to the runner as advisory tool context even when its MCP services are unavailable; the artifact pins its path, SHA-256, and character count, and includes it in the packet budget.
-- Evidence artifacts are explicitly selected, UTF-8, hash-pinned, and counted against profile-specific artifact count and character budgets. The compiler preserves full artifacts locally and fails closed when a selected artifact cannot fit; it never truncates evidence implicitly.
-- A normal work item may read only `evidence/<work_item_id>/` below the local artifact root. A research iteration accepts no caller-provided artifact path; it resolves its allowed paths from the research ledger for the declared `research_id`.
-- TaskFlow requires `actor_seat_id`, so a team agent cannot run without a seat-bound Context Compiler artifact. Direct seat invocations without that artifact must request `NEED_MORE_CONTEXT`.
 - Any excluded or truncated material is recorded in `omitted_context`. The correct response is an explicit `NEED_MORE_CONTEXT` request, not an implicit expansion.
 
 Compile a bounded packet directly:
@@ -283,7 +284,7 @@ Viewer output is observation-only and consumes no agent context tokens.
 
 ## TaskFlow DAG
 
-`agent_team_taskflow.py` exposes `agent_team_module_iteration` and `agent_team_research_iteration`. Both use the internal ASCII role key. The research DAG obtains artifact references only through the local research ledger; do not send `artifact_paths` in a research DagRun.
+`agent_team_taskflow.py` exposes the `agent_team_module_iteration` DAG. A DagRun configuration currently uses the internal ASCII role key:
 
 ```json
 {
@@ -302,47 +303,7 @@ Viewer output is observation-only and consumes no agent context tokens.
   "selected_skill_ids": ["engineer-cpp-systems"],
   "db_path": "C:\\agent-team\\state\\agent-team.db",
   "registry_path": "C:\\agent-team\\repositories.json",
-  "artifact_root": ".\\agent-team\\artifacts"
-}
-```
-
-## Large-Source Research
-
-Use `$research-loop` to create the role and evidence contract, then use the local ledger to preserve source provenance and material artifacts. The ledger stores raw source content locally and emits only references, hashes, ratios, and identifiers in its JSON output.
-
-```powershell
-$researchDb = ".\.agent-team\state\research.db"
-$artifactRoot = ".\.agent-team\artifacts"
-
-python .\scripts\agent_team_research.py `
-  --db $researchDb `
-  --artifact-root $artifactRoot `
-  init
-
-python .\scripts\agent_team_research.py `
-  --db $researchDb `
-  --artifact-root $artifactRoot `
-  create-run `
-  --run-id R-001 `
-  --title "Storage migration research" `
-  --question "Which migration path preserves supported upgrades?"
-```
-
-Add an approved local file with `add-file`, or retrieve an approved HTTP(S) source with `add-url`; then use `shard-source`, `record-summary`, `add-claim`, `open-conflict`, `resolve-conflict`, and `finalize`. `record-summary` records the ten-percent and advisory size targets as metadata only. It never truncates or rejects a summary because it exceeds either target.
-
-Use `select-context` to produce reference-only selections. Its `context_compiler_artifact_paths` field is informational for human audit; `agent_team_research_iteration` resolves the same allowed artifact set directly from the ledger, so an arbitrary path cannot be injected by DagRun configuration.
-
-TaskFlow carries only the compiled context artifact path and reference metadata. Immediately before the local runner starts, the Context Compiler hash-verifies and materializes the bounded selected evidence. Research runner messages are checked again: they must contain the active research ID and an artifact, claim, conflict, source, shard, or summary reference, and they are rejected if they contain raw content fields.
-
-Example research DagRun additions:
-
-```json
-{
-  "research_id": "R-001",
-  "research_phase": "CROSS_VALIDATE",
-  "research_db_path": ".\\agent-team\\state\\research.db",
-  "research_claim_ids": ["CLAIM-17"],
-  "research_include_conflicts": true
+  "artifact_root": "C:\\agent-team\\artifacts"
 }
 ```
 
@@ -363,6 +324,6 @@ python .\scripts\init_agent_team.py --check
 For first-installation or endpoint troubleshooting, verify the shared service before this check:
 
 ```powershell
-python .\.agents\skills\serena-project-setup\scripts\manage_serena_service.py `
-  --service-config .\config\agent-team\serena-service.toml status
+python .\skills\serena-project-setup\scripts\manage_serena_service.py `
+  --service-config .\agents\serena-service.toml status
 ```

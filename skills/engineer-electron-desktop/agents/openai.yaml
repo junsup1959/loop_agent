@@ -1,6 +1,0 @@
-interface:
-  display_name: "Engineer Electron Desktop"
-  short_description: "Engineer secure Electron applications"
-  default_prompt: "Use $engineer-electron-desktop to implement or review the current Electron desktop task."
-policy:
-  allow_implicit_invocation: false

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-team-compiled-professional-profile-v1",
+  "title": "Compiled Agent-Team Professional Profile",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "professional_skill_id",
+    "role_ref",
+    "gate_or_task_ref",
+    "primary_technology_ref",
+    "secondary_technology_ref",
+    "toolchain_ref",
+    "references"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "professional_skill_id": {"const": "professional-profile-runtime"},
+    "role_ref": {"type": "string"},
+    "gate_or_task_ref": {"type": "string"},
+    "primary_technology_ref": {"type": "string"},
+    "secondary_technology_ref": {"type": ["string", "null"]},
+    "toolchain_ref": {"type": "string"},
+    "references": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "version", "path", "sha256", "content"],
+        "properties": {
+          "id": {"type": "string"},
+          "category": {"type": "string"},
+          "version": {"type": "string"},
+          "path": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "content": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

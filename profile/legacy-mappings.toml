@@ -1,0 +1,56 @@
+[legacy]
+version = 1
+active_professional_skill_id = "professional-profile-runtime"
+migration_mode = "compiled-external-references"
+
+[[mappings]]
+legacy_skill_id = "automate-powershell"
+replacement_refs = ["technology/powershell", "toolchain/powershell"]
+
+[[mappings]]
+legacy_skill_id = "design-desktop-ui"
+replacement_refs = ["technology/desktop-ui"]
+
+[[mappings]]
+legacy_skill_id = "engineer-build-release"
+replacement_refs = ["gate/build-validation"]
+
+[[mappings]]
+legacy_skill_id = "engineer-cpp-systems"
+replacement_refs = ["technology/cpp", "toolchain/cpp"]
+
+[[mappings]]
+legacy_skill_id = "engineer-dotnet-desktop"
+replacement_refs = ["technology/dotnet", "toolchain/dotnet"]
+
+[[mappings]]
+legacy_skill_id = "engineer-electron-desktop"
+replacement_refs = ["technology/electron", "toolchain/node"]
+
+[[mappings]]
+legacy_skill_id = "engineer-embedded-devices"
+replacement_refs = ["technology/embedded-devices", "toolchain/cpp"]
+
+[[mappings]]
+legacy_skill_id = "engineer-local-data"
+replacement_refs = ["technology/local-data"]
+
+[[mappings]]
+legacy_skill_id = "engineer-python"
+replacement_refs = ["technology/python", "toolchain/python"]
+
+[[mappings]]
+legacy_skill_id = "engineer-rust-systems"
+replacement_refs = ["technology/rust", "toolchain/rust"]
+
+[[mappings]]
+legacy_skill_id = "engineer-test-coverage"
+replacement_refs = ["gate/integration-validation"]
+
+[[mappings]]
+legacy_skill_id = "review-code-quality"
+replacement_refs = ["gate/code-review"]
+
+[[mappings]]
+legacy_skill_id = "review-solution-architecture"
+replacement_refs = ["gate/architecture-review"]

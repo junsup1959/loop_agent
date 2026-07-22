@@ -1,0 +1,1310 @@
+{
+  "schema_version": 1,
+  "manifest_id": "phase8-six-seat-cleanup-2026-07-21",
+  "project_root": "C:/project/agent_tream",
+  "status": "PASS_WITH_CACHE_ENVIRONMENT_BLOCKER",
+  "created_at": "2026-07-21T00:00:00+09:00",
+  "safety_contract": {
+    "absolute_root_verified": "C:/project/agent_tream",
+    "forbidden_targets": [
+      "C:/project/agent_tream",
+      ".agent-team/state/*.db*",
+      ".agent-team/artifacts/**",
+      "unknown or untracked non-cache user files",
+      "paths outside project_root"
+    ],
+    "manual_changes": "apply_patch only",
+    "generated_tools": [
+      "scripts/project_agents.py",
+      "scripts/init_agent_team.py",
+      "scripts/build_agent_team_bundle.py"
+    ],
+    "git_recovery_note": "Recovery commands are documentation only and were not executed."
+  },
+  "preflight": {
+    "legacy_architecture_count": 18,
+    "legacy_workflow_count": 18,
+    "replacement_basename_mapping": "PASS",
+    "replacement_frontmatter": "PASS for all 40 non-Maestro docs; docs/operations/rtk.md retargeted to agents/RTK.md before delete",
+    "root_and_docs_index_legacy_links": "PASS",
+    "temporary_bundle": {
+      "path": "C:/Users/junsu/AppData/Local/Temp/agent-team-phase8-bundle-236a3d0232f44d41a6cdb39e0746e538",
+      "materialize": "PASS",
+      "check": "PASS no drift",
+      "manifest_sha256": "caf5e9d945ae3723aa607a3a6a8c74b21fb80f0964b4111724700c677c9f0c63",
+      "validators": [
+        "project_agents.py validate PASS",
+        "project_skills.py validate PASS"
+      ]
+    },
+    "runtime_keep_decisions": 3,
+    "state_evidence_baseline": {
+      "agent-team.db": "06222c2ab7be852f7f211fde597b49856ab0b68cc95c629068a5777f8dba1186",
+      "agent-team.db-shm": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "agent-team.db-wal": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "artifact_file_count": 0
+    },
+    "preserved_untracked_noncache": {
+      "excluded_planned_reconciliation": [
+        "docs/operations/rtk.md",
+        "docs/README.md",
+        "docs/architecture/INDEX.md",
+        "output/agent-team-codex-native/**"
+      ],
+      "file_count": 163,
+      "aggregate_sha256": "42a8acbf13b98c4c3af9749ec15b4a33319e6987dc814e064f1cda6179bc1f6b"
+    }
+  },
+  "postflight": {
+    "deletion_results": {
+      "legacy_human_docs": 38,
+      "obsolete_bundle_paths": 30,
+      "registry_retired_runtime_agents": 3,
+      "total_removed_paths": 71,
+      "unexpected_existing_delete_targets": 0
+    },
+    "registry_agent_prune": {
+      "generator": "scripts/project_agents.py sync",
+      "ownership_sources": [
+        "agents/seats/registry.toml [[seats]].absorbed_seat_ids",
+        "agents/seats/registry.toml [legacy].archived_seat_ids"
+      ],
+      "safety_change": "synchronize() prunes only exact registry-retired seat IDs after seat-ID and active-overlap validation; unknown files and lookalikes are preserved",
+      "test": "tests/unit/test_agent_topology.py::test_sync_prunes_only_registry_retired_runtime_agents PASS",
+      "deleted": [
+        {
+          "path": ".codex/agents/TA_권지호.toml",
+          "sha256_before_delete": "3b441b0ff2ff35a7467c8a44846d1276d154b32a3c4841ad60c0d81d03fb3e13",
+          "owner": "pm_ta.absorbed_seat_ids"
+        },
+        {
+          "path": ".codex/agents/BUILD_RELEASE_정서준.toml",
+          "sha256_before_delete": "4ddd4a399c1f076532e2a04978f235c2b48c3edb941e411928a39ee6617efe11",
+          "owner": "qa_build.absorbed_seat_ids"
+        },
+        {
+          "path": ".codex/agents/DEV_정예은.toml",
+          "sha256_before_delete": "345385e7217da5fe3f497b6d7575e35ae5a3f22a6f84f03daeaaeb852bde869a",
+          "owner": "legacy.archived_seat_ids"
+        }
+      ],
+      "root_agent_count": 5,
+      "bundle_agent_count": 5
+    },
+    "generated_reconciliation": {
+      "codex_config": "PASS max_threads=6, both MCPs enabled=true and required=true, Serena initial_instructions present",
+      "bundle_format_version": 4,
+      "bundle_generated_path_count": 125,
+      "bundle_manifest_sha256": "541aea2fca93653d5bea8e4417e44e0b7dc478f47d0f5fdecbc78d7b0b0fbf9f",
+      "real_bundle_check": "PASS has_drift=false",
+      "clean_temp_bundle": "PASS materialize, project_agents validate, project_skills validate, check has_drift=false; temporary directory removed"
+    },
+    "independent_code_review": {
+      "result": "PASS",
+      "quality_gate": "PASS",
+      "critical_findings": 0,
+      "major_findings": 0,
+      "closed_after_remediation": {
+        "initial_review_findings": 7,
+        "follow_up_review_findings": 2,
+        "total_closed_findings": 9
+      },
+      "summary": "Final independent code review found no remaining Critical or Major findings; all prior 7+2 findings were closed after remediation."
+    },
+    "resolved_follow_ups": [
+      {
+        "scope": "default independent AX_ROOT initialization",
+        "runtime_root": "C:/Users/junsu/AppData/Local/agent-team-ax/agent_tream",
+        "initialize_command": "python -B scripts/init_agent_team.py --json",
+        "check_command": "python -B scripts/init_agent_team.py --check --json",
+        "result": "PASS: official initialize and subsequent check both exited 0 at the default external AX_ROOT",
+        "official_initialization_complete": true
+      }
+    ],
+    "environment_blockers": [
+      {
+        "scope": "five current project __pycache__ directories",
+        "result": "BLOCKED by command execution policy; the three earlier explicit literal-path deletion attempts remain blocked and no cache path was deleted during final reconciliation",
+        "attempted_paths": [
+          "scripts/__pycache__",
+          "tests/integration/__pycache__",
+          "output/agent-team-codex-native/scripts/__pycache__"
+        ],
+        "newly_inventoried_paths": [
+          "tests/__pycache__",
+          "tests/unit/__pycache__"
+        ],
+        "retained_cache_directory_count": 5,
+        "retained_pyc_count": 80,
+        "retained_file_count": 80,
+        "required_follow_up": "Delete only the five manifest-listed cache directories from an authorized host terminal, then rerun cache inventory and bundle check."
+      }
+    ],
+    "preservation": {
+      "state_hashes_match_preflight": true,
+      "state_recheck_result": "PASS: final read-only SHA-256 recheck matches the recorded preflight baseline for DB, SHM, and WAL; artifact file count remains 0",
+      "agent-team.db": "06222c2ab7be852f7f211fde597b49856ab0b68cc95c629068a5777f8dba1186",
+      "agent-team.db-shm": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "agent-team.db-wal": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "artifact_file_count": 0,
+      "untracked_noncache_path_count_excluding_declared_docs_output_manifest": 163,
+      "authorized_changed_untracked_path": "Historical Phase 8 field: tests/unit/test_agent_topology.py",
+      "unknown_path_note": "The untracked non-cache count and digest are retained as historical Phase 8 evidence and were not recomputed during this final documentation-only reconciliation. The final preservation assertion is limited to the separately rechecked local state hashes and artifact count; no deletion was performed.",
+      "final_inventory_sha256_method": "sha256(path UTF-8 + NUL + raw file sha256 digest, sorted paths)",
+      "final_inventory_sha256": "1f95fdb1235fc1c8faae6401a937fa563b8f432d666aaa24954df2af15b0074b"
+    }
+  },
+  "entries": [
+    {
+      "path": "architecture/00-system-context.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/00-system-context.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/00-system-context.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/01-component-layers.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/01-component-layers.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/01-component-layers.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/02-project-layout.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/02-project-layout.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/02-project-layout.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/03-domain-and-state-model.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/03-domain-and-state-model.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/03-domain-and-state-model.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/04-team-and-authority-model.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/04-team-and-authority-model.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/04-team-and-authority-model.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/05-expertise-skill-system.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/05-expertise-skill-system.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/05-expertise-skill-system.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/06-planning-and-orchestration.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/06-planning-and-orchestration.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/06-planning-and-orchestration.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/07-messaging-and-state-store.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/07-messaging-and-state-store.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/07-messaging-and-state-store.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/08-context-and-evidence-system.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/08-context-and-evidence-system.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/08-context-and-evidence-system.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/09-git-and-workspace-system.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/09-git-and-workspace-system.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/09-git-and-workspace-system.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/10-agent-runtime-interfaces.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/10-agent-runtime-interfaces.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/10-agent-runtime-interfaces.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/11-gate-and-evidence-model.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/11-gate-and-evidence-model.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/11-gate-and-evidence-model.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/12-loop-control-model.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/12-loop-control-model.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/12-loop-control-model.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/13-runtime-deployment.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/13-runtime-deployment.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/13-runtime-deployment.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/14-security-and-authority-boundaries.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/14-security-and-authority-boundaries.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/14-security-and-authority-boundaries.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/15-observability-data-model.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/15-observability-data-model.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/15-observability-data-model.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/16-large-scale-research-evidence.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/16-large-scale-research-evidence.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/16-large-scale-research-evidence.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "architecture/INDEX.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/architecture/INDEX.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"architecture/INDEX.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/00-workflow-overview.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/00-workflow-overview.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/00-workflow-overview.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/01-goal-intake.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/01-goal-intake.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/01-goal-intake.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/02-discovery-and-source-evidence.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/02-discovery-and-source-evidence.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/02-discovery-and-source-evidence.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/03-plan-ir-and-task-dag.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/03-plan-ir-and-task-dag.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/03-plan-ir-and-task-dag.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/04-role-and-skill-binding.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/04-role-and-skill-binding.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/04-role-and-skill-binding.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/05-taskflow-execution.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/05-taskflow-execution.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/05-taskflow-execution.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/06-git-workspace-isolation.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/06-git-workspace-isolation.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/06-git-workspace-isolation.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/07-message-routing-and-agent-lifecycle.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/07-message-routing-and-agent-lifecycle.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/07-message-routing-and-agent-lifecycle.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/08-context-compilation.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/08-context-compilation.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/08-context-compilation.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/09-agent-task-execution.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/09-agent-task-execution.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/09-agent-task-execution.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/10-review-approval-and-rework.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/10-review-approval-and-rework.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/10-review-approval-and-rework.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/11-module-development-loop.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/11-module-development-loop.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/11-module-development-loop.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/12-goal-supervisory-loop.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/12-goal-supervisory-loop.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/12-goal-supervisory-loop.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/13-integration-and-release.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/13-integration-and-release.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/13-integration-and-release.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/14-failure-and-recovery.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/14-failure-and-recovery.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/14-failure-and-recovery.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/15-observability-and-audit.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/15-observability-and-audit.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/15-observability-and-audit.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/16-large-scale-research-loop.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/16-large-scale-research-loop.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/16-large-scale-research-loop.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "workflow/INDEX.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/workflow/INDEX.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"workflow/INDEX.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "REPOSITORY_CONFIGURATION.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No live executable reference; root README and docs index use the replacement path.",
+      "replacement": "docs/operations/repository-configuration.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"REPOSITORY_CONFIGURATION.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "RTK.md",
+      "classification": "legacy-human-document",
+      "owner_evidence": "Git-tracked repository documentation; Phase 7 supplied the declared replacement.",
+      "live_reference_result": "No executable reference to root RTK.md; runtime hook resolves agents/RTK.md. Replacement frontmatter must be retargeted before deletion.",
+      "replacement": "docs/operations/rtk.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"RTK.md\"",
+      "validation_evidence": [
+        "replacement exists with exact basename mapping",
+        "replacement declares runtime_injection=false and source_of_truth",
+        "final local-link validation required before and after deletion"
+      ]
+    },
+    {
+      "path": "scripts/README.md",
+      "classification": "legacy-human-document-candidate",
+      "owner_evidence": "Git-tracked but locally modified; current bundle builder still maps every scripts file into the generated bundle.",
+      "live_reference_result": "Live generated reference remains through scripts/build_agent_team_bundle.py source mapping, and current uncommitted bytes lack Git-only recovery.",
+      "replacement": "docs/operations/scripts.md",
+      "action": "KEEP",
+      "recovery_method": "No deletion performed; current bytes remain in place.",
+      "validation_evidence": [
+        "KEEP until the generator excludes this path or a separately approved reversible archive is created."
+      ]
+    },
+    {
+      "path": "agents/activation-instructions.md",
+      "classification": "conditional-runtime-prose-or-config",
+      "owner_evidence": "Canonical repository runtime input candidate.",
+      "live_reference_result": "KEEP: live reference remains in agents/contracts/clause-catalog.toml source_refs.",
+      "replacement": "agents/contracts/clause-catalog.toml + agents/templates/activation-packet.md.tmpl",
+      "action": "KEEP",
+      "recovery_method": "No deletion performed; current bytes remain in place.",
+      "validation_evidence": [
+        "Fail-closed KEEP decision; no out-of-scope production reference edits."
+      ]
+    },
+    {
+      "path": "agents/recommended-tools.md",
+      "classification": "conditional-runtime-prose-or-config",
+      "owner_evidence": "Canonical repository runtime input candidate.",
+      "live_reference_result": "KEEP: live reference remains in clause catalog source_refs and tests/integration/test_bundle_builder.py.",
+      "replacement": "agents/mcp-policy.toml + agents/contracts/clause-catalog.toml",
+      "action": "KEEP",
+      "recovery_method": "No deletion performed; current bytes remain in place.",
+      "validation_evidence": [
+        "Fail-closed KEEP decision; no out-of-scope production reference edits."
+      ]
+    },
+    {
+      "path": "agents/serena-service.toml",
+      "classification": "conditional-runtime-prose-or-config",
+      "owner_evidence": "Canonical repository runtime input candidate.",
+      "live_reference_result": "KEEP: live reference remains in agents/team.toml serena_service.",
+      "replacement": "agents/mcp-policy.toml + sample_config.toml",
+      "action": "KEEP",
+      "recovery_method": "No deletion performed; current bytes remain in place.",
+      "validation_evidence": [
+        "Fail-closed KEEP decision; no out-of-scope production reference edits."
+      ]
+    },
+    {
+      "path": ".codex/config.toml",
+      "classification": "managed-generated-config",
+      "owner_evidence": "# agent-team-managed: init_agent_team.py marker",
+      "live_reference_result": "Managed block is stale: max_threads=8 and Serena tool allowlist omits initial_instructions.",
+      "replacement": "scripts/init_agent_team.py --refresh-mcp-config",
+      "action": "RECONCILE",
+      "recovery_method": "Restore the pre-refresh Git working-tree version; file is Git-tracked and initially unmodified.",
+      "validation_evidence": [
+        "Generator render uses max_threads=6 and required Serena/sequentialthinking settings."
+      ]
+    },
+    {
+      "path": ".codex/agents/*.toml",
+      "classification": "generated-fixed-seat-agents",
+      "owner_evidence": "agents/seats/registry.toml and scripts/project_agents.py compile_runtime_agent",
+      "live_reference_result": "Desired generated set is exactly five fixed seats.",
+      "replacement": "scripts/project_agents.py sync",
+      "action": "RECONCILE",
+      "recovery_method": "Git restore individual tracked agent files.",
+      "validation_evidence": [
+        "project_agents.py list reports five fixed seats plus one non-file elastic slot."
+      ]
+    },
+    {
+      "path": ".codex/agents/TA_권지호.toml",
+      "classification": "obsolete-generated-seat-agent",
+      "owner_evidence": "Git-tracked generated agent; registry pm_ta absorbed_seat_ids.",
+      "live_reference_result": "Absent from project_agents.py list and the clean temporary v4 bundle manifest.",
+      "replacement": ".codex/agents/PM_임민재.toml",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \".codex/agents/TA_권지호.toml\"",
+      "validation_evidence": [
+        "Delete only after project_agents.py sync generates the five desired fixed agents."
+      ]
+    },
+    {
+      "path": ".codex/agents/BUILD_RELEASE_정서준.toml",
+      "classification": "obsolete-generated-seat-agent",
+      "owner_evidence": "Git-tracked generated agent; registry qa_build absorbed_seat_ids.",
+      "live_reference_result": "Absent from project_agents.py list and the clean temporary v4 bundle manifest.",
+      "replacement": ".codex/agents/QA_SDET_최수아.toml",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \".codex/agents/BUILD_RELEASE_정서준.toml\"",
+      "validation_evidence": [
+        "Delete only after project_agents.py sync generates the five desired fixed agents."
+      ]
+    },
+    {
+      "path": ".codex/agents/DEV_정예은.toml",
+      "classification": "obsolete-generated-seat-agent",
+      "owner_evidence": "Git-tracked generated agent; registry archived_seat_ids.",
+      "live_reference_result": "Absent from project_agents.py list and the clean temporary v4 bundle manifest.",
+      "replacement": "agents/seats/registry.toml archived_seat_ids",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \".codex/agents/DEV_정예은.toml\"",
+      "validation_evidence": [
+        "Delete only after project_agents.py sync generates the five desired fixed agents."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/",
+      "classification": "generated-delivery-bundle",
+      "owner_evidence": "Legacy bundle-manifest.toml identifies agent-team-codex-native; current builder emits format v4 bundle-build-manifest.json.",
+      "live_reference_result": "Check-only run reported deterministic drift; clean temporary v4 materialization and check passed.",
+      "replacement": "scripts/build_agent_team_bundle.py --materialize",
+      "action": "RECONCILE",
+      "recovery_method": "Git restore tracked legacy paths; rerun the deterministic builder for v4 owned paths.",
+      "validation_evidence": [
+        "temporary manifest sha256 caf5e9d945ae3723aa607a3a6a8c74b21fb80f0964b4111724700c677c9f0c63"
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/automate-powershell/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/powershell.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/automate-powershell/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/automate-powershell/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/powershell.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/automate-powershell/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/design-desktop-ui/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/desktop-ui.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/design-desktop-ui/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/design-desktop-ui/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/desktop-ui.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/design-desktop-ui/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-build-release/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/build-validation.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-build-release/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-build-release/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/build-validation.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-build-release/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-cpp-systems/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/cpp.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-cpp-systems/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-cpp-systems/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/cpp.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-cpp-systems/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-dotnet-desktop/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/dotnet.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-dotnet-desktop/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-dotnet-desktop/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/dotnet.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-dotnet-desktop/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-electron-desktop/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/electron.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-electron-desktop/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-electron-desktop/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/electron.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-electron-desktop/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-embedded-devices/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/embedded-devices.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-embedded-devices/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-embedded-devices/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/embedded-devices.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-embedded-devices/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-local-data/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/local-data.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-local-data/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-local-data/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/local-data.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-local-data/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-python/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/python.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-python/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-python/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/python.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-python/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-rust-systems/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/rust.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-rust-systems/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-rust-systems/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/technologies/rust.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-rust-systems/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-test-coverage/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/implementation.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-test-coverage/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/engineer-test-coverage/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/implementation.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/engineer-test-coverage/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/review-code-quality/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/code-review.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/review-code-quality/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/review-code-quality/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/code-review.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/review-code-quality/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/review-solution-architecture/SKILL.md",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/architecture-review.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/review-solution-architecture/SKILL.md\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.agents/skills/review-solution-architecture/agents/openai.yaml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked inside format-v2 generated bundle skill_root and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Retired technology/reviewer Skill is not present in skills/catalog.toml or the v4 bundle manifest.",
+      "replacement": "profile/gates/architecture-review.md",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.agents/skills/review-solution-architecture/agents/openai.yaml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.codex/agents/TA_권지호.toml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked format-v2 generated bundle path and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Not selected by the current five-seat/v4 bundle generator.",
+      "replacement": ".codex/agents/PM_임민재.toml",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.codex/agents/TA_권지호.toml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.codex/agents/BUILD_RELEASE_정서준.toml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked format-v2 generated bundle path and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Not selected by the current five-seat/v4 bundle generator.",
+      "replacement": ".codex/agents/QA_SDET_최수아.toml",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.codex/agents/BUILD_RELEASE_정서준.toml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/.codex/agents/DEV_정예은.toml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked format-v2 generated bundle path and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Not selected by the current five-seat/v4 bundle generator.",
+      "replacement": "config/agent-team/seats/registry.toml",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/.codex/agents/DEV_정예은.toml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/bundle-manifest.toml",
+      "classification": "legacy-generated-bundle-path",
+      "owner_evidence": "Git-tracked format-v2 generated bundle path and absent from the clean v4 generated_paths inventory.",
+      "live_reference_result": "Not selected by the current five-seat/v4 bundle generator.",
+      "replacement": "bundle-build-manifest.json",
+      "action": "DELETE",
+      "recovery_method": "git restore --source=HEAD -- \"output/agent-team-codex-native/bundle-manifest.toml\"",
+      "validation_evidence": [
+        "Remove only this explicitly enumerated tracked path after v4 materialization."
+      ]
+    },
+    {
+      "path": "output/agent-team-codex-native/scripts/__pycache__",
+      "classification": "generated-cache",
+      "owner_evidence": "Directory basename is __pycache__; final inventory observed 12 .pyc files.",
+      "live_reference_result": "No runtime authority or evidence; excluded from generated_paths and reported as preserved unknown cache by the bundle check.",
+      "replacement": null,
+      "action": "KEEP",
+      "cleanup_status": "BLOCKED",
+      "pyc_count": 12,
+      "recovery_method": "Not recovered; Python may regenerate cache bytes.",
+      "validation_evidence": [
+        "The earlier explicit verified literal-path deletion attempt remains blocked by command execution policy; final inventory retained 12 .pyc files."
+      ]
+    },
+    {
+      "path": "scripts/__pycache__",
+      "classification": "generated-cache",
+      "owner_evidence": "Directory basename is __pycache__; final inventory observed 29 .pyc files.",
+      "live_reference_result": "No runtime authority or evidence; excluded by the bundle builder.",
+      "replacement": null,
+      "action": "KEEP",
+      "cleanup_status": "BLOCKED",
+      "pyc_count": 29,
+      "recovery_method": "Not recovered; Python may regenerate cache bytes.",
+      "validation_evidence": [
+        "The earlier explicit verified literal-path deletion attempt remains blocked by command execution policy; final inventory retained 29 .pyc files."
+      ]
+    },
+    {
+      "path": "tests/__pycache__",
+      "classification": "generated-cache",
+      "owner_evidence": "Directory basename is __pycache__; final inventory observed 1 .pyc file.",
+      "live_reference_result": "No runtime authority or evidence; excluded by the bundle builder.",
+      "replacement": null,
+      "action": "KEEP",
+      "cleanup_status": "BLOCKED",
+      "pyc_count": 1,
+      "recovery_method": "Not recovered; Python may regenerate cache bytes.",
+      "validation_evidence": [
+        "Discovered by the final recursive inventory; no deletion was attempted during documentation reconciliation and the path is retained KEEP/BLOCKED."
+      ]
+    },
+    {
+      "path": "tests/integration/__pycache__",
+      "classification": "generated-cache",
+      "owner_evidence": "Directory basename is __pycache__; final inventory observed 20 .pyc files.",
+      "live_reference_result": "No runtime authority or evidence; excluded by the bundle builder.",
+      "replacement": null,
+      "action": "KEEP",
+      "cleanup_status": "BLOCKED",
+      "pyc_count": 20,
+      "recovery_method": "Not recovered; Python may regenerate cache bytes.",
+      "validation_evidence": [
+        "The earlier explicit verified literal-path deletion attempt remains blocked by command execution policy; final inventory retained 20 .pyc files."
+      ]
+    },
+    {
+      "path": "tests/unit/__pycache__",
+      "classification": "generated-cache",
+      "owner_evidence": "Directory basename is __pycache__; final inventory observed 18 .pyc files.",
+      "live_reference_result": "No runtime authority or evidence; excluded by the bundle builder.",
+      "replacement": null,
+      "action": "KEEP",
+      "cleanup_status": "BLOCKED",
+      "pyc_count": 18,
+      "recovery_method": "Not recovered; Python may regenerate cache bytes.",
+      "validation_evidence": [
+        "Discovered by the final recursive inventory; no deletion was attempted during documentation reconciliation and the path is retained KEEP/BLOCKED."
+      ]
+    }
+  ],
+  "generated_reconciliation_summaries": [
+    {
+      "path": ".codex/agents",
+      "action": "RECONCILE",
+      "desired": "5 fixed generated agents",
+      "preserve": "unknown non-generated files",
+      "delete": "3 registry-proven absorbed/archived generated agents"
+    },
+    {
+      "path": ".codex/config.toml",
+      "action": "RECONCILE",
+      "desired": "max_threads=6; Serena and sequentialthinking enabled=true required=true; Serena includes initial_instructions",
+      "preserve": "unrelated user sections; none observed outside managed marker"
+    },
+    {
+      "path": "output/agent-team-codex-native",
+      "action": "RECONCILE",
+      "desired": "format v4 manifest-owned deterministic bundle; 125 generated paths; manifest SHA-256 541aea2fca93653d5bea8e4417e44e0b7dc478f47d0f5fdecbc78d7b0b0fbf9f; has_drift=false",
+      "preserve": "non-generated unknown files",
+      "delete": "30 explicitly enumerated Git-tracked format-v2 stale paths"
+    },
+    {
+      "path": "scripts/tests/output caches",
+      "action": "KEEP",
+      "cleanup_status": "BLOCKED",
+      "desired": "no shipped __pycache__ or .pyc",
+      "preserve": ".agent-team state and artifacts",
+      "cache_directory_count": 5,
+      "pyc_count": 80,
+      "result": "BLOCKED by command execution policy; all five current cache paths are classified KEEP/BLOCKED and 80 .pyc files remain"
+    }
+  ],
+  "preserved_path_classes": [
+    {
+      "path": ".agent-team/state/*.db*",
+      "rule": "byte-identical preservation required"
+    },
+    {
+      "path": ".agent-team/artifacts/**",
+      "rule": "all evidence preserved; baseline file count 0"
+    },
+    {
+      "path": "untracked non-cache paths outside declared reconciliation",
+      "rule": "existence and aggregate digest preserved"
+    },
+    {
+      "path": "docs/maestro/**",
+      "rule": "orchestration evidence retained"
+    },
+    {
+      "path": "unknown output paths not selected by the generator",
+      "rule": "preserve byte-identically unless explicitly classified as known desired canonical mirror"
+    }
+  ],
+  "validation_results": {
+    "status": "PASS_WITH_CACHE_ENVIRONMENT_BLOCKER",
+    "project_agents": "PASS: 5 fixed seats, 1 elastic slot, 8 capabilities, 11 transitions",
+    "project_skills": "PASS: 11 project-local Skills for 8 capabilities",
+    "init_check": "PASS: official initialize and subsequent --check --json both exited 0 at default external AX_ROOT C:/Users/junsu/AppData/Local/agent-team-ax/agent_tream",
+    "mcp_dependency_check": "PASS: Serena stdio and Sequential Thinking 2026.7.4",
+    "bundle_check": "PASS: format v4, 125 generated paths, has_drift=false, manifest SHA-256 541aea2fca93653d5bea8e4417e44e0b7dc478f47d0f5fdecbc78d7b0b0fbf9f",
+    "clean_temp_bundle": "PASS: both validators and no-drift check; temp cleanup complete",
+    "unittest": "PASS: Ran 178 tests in 202.252s, OK; skipped=2 for Windows symlink privilege; Airflow Windows platform warnings only",
+    "independent_code_review": "PASS: Critical 0, Major 0, quality gate PASS; prior 7+2 findings closed after remediation",
+    "git_diff_check": "PASS: exit 0; CRLF conversion warnings only",
+    "markdown_links": "PASS: 40 non-Maestro Markdown files, 0 frontmatter/source/link errors, 0 resolved legacy links",
+    "cache_absence": "NOT CLAIMED; BLOCKED: final recursive inventory found 5 __pycache__ directories containing 80 .pyc files, all retained KEEP/BLOCKED",
+    "preservation": "PASS: final local .agent-team DB/WAL/SHM hashes match the recorded baseline and artifact file count remains 0; external runtime evidence is limited to initialize/check PASS"
+  }
+}

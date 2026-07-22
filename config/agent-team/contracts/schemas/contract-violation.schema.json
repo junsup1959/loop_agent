@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-team-contract-violation-v4",
+  "title": "Agent-Team Contract Violation v4",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "violation_id",
+    "contract_id",
+    "activation_id",
+    "worker_fingerprint",
+    "category",
+    "reason_code",
+    "action",
+    "backend_call_recorded",
+    "format_violation_ordinal",
+    "evidence_refs",
+    "idempotency_key",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 4},
+    "violation_id": {"type": "string", "minLength": 1},
+    "contract_id": {"type": ["string", "null"]},
+    "activation_id": {"type": ["string", "null"]},
+    "worker_fingerprint": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "category": {
+      "enum": [
+        "format",
+        "authority",
+        "oid",
+        "write_scope",
+        "nested_spawn",
+        "definition_digest",
+        "profile",
+        "skill",
+        "budget",
+        "mcp_health",
+        "mcp_tool",
+        "mcp_receipt",
+        "serena_onboarding",
+        "serena_consumption"
+      ]
+    },
+    "reason_code": {"type": "string", "minLength": 1},
+    "action": {"enum": ["reject", "output_only_repair", "quarantine", "open_circuit"]},
+    "backend_call_recorded": {"type": "boolean"},
+    "format_violation_ordinal": {"type": ["integer", "null"], "minimum": 1},
+    "evidence_refs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "recorded_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "category": {"enum": ["authority", "oid", "write_scope", "nested_spawn"]}
+        },
+        "required": ["category"]
+      },
+      "then": {
+        "properties": {
+          "action": {"const": "quarantine"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"action": {"enum": ["reject", "quarantine"]}},
+        "required": ["action"]
+      },
+      "then": {
+        "properties": {"backend_call_recorded": {"const": false}}
+      }
+    }
+  ],
+  "additionalProperties": false
+}

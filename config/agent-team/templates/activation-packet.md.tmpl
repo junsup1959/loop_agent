@@ -1,0 +1,47 @@
+# Activation {{contract_id}}
+
+Authoritative JSON: `{{contract_ref}}`  
+Contract SHA-256: `{{contract_sha256}}`  
+Workflow: `{{workflow_id}}@{{workflow_version}}`  
+Transition: `{{transition_id}}` (`{{from_state}}` -> `{{to_state}}`)  
+Goal/run: `{{goal_id}}` / `{{run_id}}`  
+Activation: `{{activation_id}}`  
+Physical slot: `{{slot_key}}`  
+Seat/worker: `{{actor_identity}}`  
+Active logical capability: `{{capability_id}}`  
+Subject OID: `{{subject_oid}}`
+
+## Current Transition
+
+{{transition_summary}}
+
+## Bound Authority
+
+Approval authorities: {{approval_authorities}}  
+Merge control: {{merge_control}}  
+Nested spawn: {{nested_spawn_allowed}}
+
+## Workspace and OIDs
+
+{{workspace_binding_markdown}}
+
+## Runtime Clauses
+
+{{clauses_markdown}}
+
+## Professional Profile and Skills
+
+{{profile_binding_markdown}}
+
+{{skill_bindings_markdown}}
+
+## Required MCP Bindings
+
+{{mcp_bindings_markdown}}
+
+## Evidence and Result
+
+{{evidence_requirements_markdown}}
+
+Return exactly one JSON document satisfying `{{output_schema_ref}}`.
+Use idempotency key `{{idempotency_key}}`.

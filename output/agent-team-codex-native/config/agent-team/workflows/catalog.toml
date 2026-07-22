@@ -1,0 +1,12 @@
+[catalog]
+version = 1
+active_workflow_id = "delivery-v4"
+immutable_after_registration = true
+digest_algorithm = "sha256"
+
+[[workflows]]
+id = "delivery-v4"
+version = "4.0.0"
+path = "agents/workflows/delivery-v4.toml"
+sha256 = "923417b7a391d76062ed0625bc07c71ccdfe37f594c2a0d966fbe209c4510aa0"
+active = true

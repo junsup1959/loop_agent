@@ -1,0 +1,8 @@
+[toolchain]
+id = "rust"
+version = "1.0.0"
+technology_ids = ["rust", "local-data"]
+manifest_names = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml"]
+executables = ["cargo", "rustc"]
+version_evidence = ["rustc --version", "cargo --version"]
+validation_families = ["fmt", "check", "unit", "workspace", "clippy"]

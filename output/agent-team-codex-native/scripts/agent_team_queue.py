@@ -14,6 +14,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+try:
+    from .agent_team_state import AxStateStore
+except ImportError:  # Direct script/module execution from the repository root.
+    from agent_team_state import AxStateStore
+
 
 WakeHook = Callable[["Message"], None]
 PROJECT_KNOWLEDGE_STATES = frozenset(
@@ -151,118 +156,17 @@ class SQLiteMessageQueue:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.wake_hook = wake_hook
         self.busy_timeout_ms = busy_timeout_ms
+        self.state_store = AxStateStore(
+            self.db_path,
+            busy_timeout_ms=self.busy_timeout_ms,
+        )
         self.initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(
-            self.db_path,
-            timeout=self.busy_timeout_ms / 1_000,
-            isolation_level=None,
-        )
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute(f"PRAGMA busy_timeout = {self.busy_timeout_ms}")
-        return connection
+        return self.state_store.connect()
 
     def initialize(self) -> None:
-        with closing(self._connect()) as connection:
-            connection.execute("PRAGMA journal_mode = WAL")
-            connection.execute("PRAGMA synchronous = NORMAL")
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS messages (
-                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
-                    id TEXT NOT NULL UNIQUE,
-                    thread_id TEXT NOT NULL,
-                    work_item_id TEXT NOT NULL,
-                    parent_message_id TEXT,
-                    from_role TEXT NOT NULL,
-                    to_role TEXT NOT NULL,
-                    type TEXT NOT NULL,
-                    priority INTEGER NOT NULL DEFAULT 0,
-                    payload_json TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'PENDING'
-                        CHECK(status IN (
-                            'PENDING', 'CLAIMED', 'RUNNING',
-                            'ACKED', 'RETRY', 'DEAD_LETTER'
-                        )),
-                    available_at TEXT NOT NULL,
-                    claimed_by TEXT,
-                    lease_until TEXT,
-                    attempts INTEGER NOT NULL DEFAULT 0,
-                    max_attempts INTEGER NOT NULL DEFAULT 5,
-                    dedupe_key TEXT UNIQUE,
-                    last_error TEXT,
-                    created_at TEXT NOT NULL,
-                    processed_at TEXT,
-                    FOREIGN KEY(parent_message_id) REFERENCES messages(id)
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_messages_delivery
-                    ON messages(to_role, status, available_at, priority DESC, seq);
-                CREATE INDEX IF NOT EXISTS ix_messages_thread
-                    ON messages(thread_id, seq);
-                CREATE INDEX IF NOT EXISTS ix_messages_work_item
-                    ON messages(work_item_id, seq);
-
-                CREATE TABLE IF NOT EXISTS outbox (
-                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
-                    id TEXT NOT NULL UNIQUE,
-                    message_id TEXT NOT NULL UNIQUE,
-                    event_type TEXT NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'PENDING'
-                        CHECK(status IN ('PENDING', 'PUBLISHED', 'RETRY', 'DEAD_LETTER')),
-                    attempts INTEGER NOT NULL DEFAULT 0,
-                    available_at TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    published_at TEXT,
-                    last_error TEXT,
-                    FOREIGN KEY(message_id) REFERENCES messages(id)
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_outbox_delivery
-                    ON outbox(status, available_at, seq);
-
-                CREATE TABLE IF NOT EXISTS thread_snapshots (
-                    id TEXT PRIMARY KEY,
-                    thread_id TEXT NOT NULL,
-                    work_item_id TEXT NOT NULL,
-                    target_role TEXT NOT NULL,
-                    covered_through_seq INTEGER NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    UNIQUE(thread_id, target_role, covered_through_seq)
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_thread_snapshots_latest
-                    ON thread_snapshots(thread_id, target_role, covered_through_seq DESC);
-
-                CREATE INDEX IF NOT EXISTS ix_messages_context_projection
-                    ON messages(thread_id, work_item_id, seq);
-
-                CREATE TABLE IF NOT EXISTS project_knowledge_state (
-                    repo_id TEXT PRIMARY KEY,
-                    project_path TEXT NOT NULL,
-                    baseline_oid TEXT,
-                    inspected_oid TEXT,
-                    source_fingerprint TEXT,
-                    state TEXT NOT NULL CHECK(state IN (
-                        'new', 'refresh_required', 'ready', 'deferred'
-                    )),
-                    memory_manifest_json TEXT NOT NULL DEFAULT '{}',
-                    owner_seat_id TEXT,
-                    evidence_artifact_ref TEXT,
-                    memory_manifest_sha256 TEXT,
-                    last_request_message_id TEXT,
-                    acknowledged_at TEXT,
-                    updated_at TEXT NOT NULL
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_project_knowledge_state_state
-                    ON project_knowledge_state(state, updated_at DESC);
-                """
-            )
+        self.state_store.initialize()
 
     @staticmethod
     def _message_from_row(row: sqlite3.Row) -> Message:

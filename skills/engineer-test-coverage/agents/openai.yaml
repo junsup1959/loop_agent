@@ -1,6 +1,0 @@
-interface:
-  display_name: "Engineer Test Coverage"
-  short_description: "Build risk-based regression coverage"
-  default_prompt: "Use $engineer-test-coverage to design or implement tests for the current change."
-policy:
-  allow_implicit_invocation: false

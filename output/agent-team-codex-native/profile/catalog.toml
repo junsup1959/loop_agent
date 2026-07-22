@@ -1,0 +1,330 @@
+[catalog]
+version = 1
+single_skill_id = "professional-profile-runtime"
+compiled_schema = "schemas/compiled-profile.schema.json"
+authority_expansion_allowed = false
+tool_expansion_allowed = false
+write_scope_expansion_allowed = false
+model_selection_allowed = false
+gate_expansion_allowed = false
+reference_order = [
+  "role",
+  "gate_or_task",
+  "primary_technology",
+  "secondary_technology",
+  "toolchain",
+]
+max_secondary_technologies = 1
+
+[[references]]
+id = "role/developer"
+category = "role"
+version = "1.0.0"
+path = "roles/developer.md"
+sha256 = "b46cffdc5e247c19e200009a254e4f6cef315240ee63b00c4eda580ae558859a"
+aliases = ["dev_1", "dev_2", "dev_3", "developer", "developer_slot", "worker"]
+
+[[references]]
+id = "role/ta"
+category = "role"
+version = "1.0.0"
+path = "roles/ta.md"
+sha256 = "3553edcdfb4eb8f21c8601b20adaee7cb96bc0970b530b670cb3a3bcb2644a23"
+aliases = ["ta", "technical-architect", "technical_architect", "advisory"]
+
+[[references]]
+id = "role/qa"
+category = "role"
+version = "1.0.0"
+path = "roles/qa.md"
+sha256 = "93076530ba780637481eb88f07d0130972afbf8231b3f7cb2739270e595f70d0"
+aliases = ["qa", "qa_sdet", "sdet"]
+
+[[references]]
+id = "role/pl"
+category = "role"
+version = "1.0.0"
+path = "roles/pl.md"
+sha256 = "8a0b9c676a13ca53285f30d3d972bfa24c1605a099b9c611033f3926cbb5d78e"
+aliases = ["pl", "project-leader", "project_leader"]
+
+[[references]]
+id = "role/pm"
+category = "role"
+version = "1.0.0"
+path = "roles/pm.md"
+sha256 = "cf9092ee62a54c1fc7aab428e412f650b266fc1322e5d13d11ae1c03d5d54ea1"
+aliases = ["pm", "project-manager", "project_manager"]
+
+[[references]]
+id = "role/build-release"
+category = "role"
+version = "1.0.0"
+path = "roles/build-release.md"
+sha256 = "4a5888bc822b908cebbfbcc776741fc4e4516c0eaadf595a6038c5cbf82dbd0f"
+aliases = ["build", "build_release", "build-release"]
+
+[[references]]
+id = "gate/implementation"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/implementation.md"
+sha256 = "230db6f146c65b78cb7024eb6d3ba9977e675cc759426e90ce5c8c2c8c62d6c0"
+aliases = ["implementation", "implement", "development", "coding"]
+
+[[references]]
+id = "gate/code-review"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/code-review.md"
+sha256 = "ad380aab8b48b52dc63a8d263137c5ddedb45974c8f369e16cf3b522df5de852"
+aliases = ["code-review", "code_quality", "code-quality", "review"]
+
+[[references]]
+id = "gate/architecture-review"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/architecture-review.md"
+sha256 = "443ccc3e102afce4c8bb122878764bcf10b94b1e38db82e47309e371f42dc6cf"
+aliases = ["architecture-review", "architecture", "design-review"]
+
+[[references]]
+id = "gate/integration-validation"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/integration-validation.md"
+sha256 = "3b03dc8549fc85c8903b5786a77451629b6fea712888df00b93f0e66b5746d7b"
+aliases = [
+  "integration-validation",
+  "integration",
+  "integration-review",
+  "candidate-selection",
+  "quality",
+  "quality-review",
+  "post-merge-qa",
+]
+
+[[references]]
+id = "gate/build-validation"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/build-validation.md"
+sha256 = "3757c362f5b3f5d306f103c839fe86d725d52673281e82903f51df64e9f10bb5"
+aliases = ["build-validation", "build", "build-release", "release"]
+
+[[references]]
+id = "gate/requirements"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/requirements.md"
+sha256 = "492d2c91c660148d7cefb026c314221634e51f9316933cbaf9f84feceac9e0f3"
+aliases = ["requirements", "requirement", "requirement-review", "acceptance"]
+
+[[references]]
+id = "gate/planning"
+category = "gate_or_task"
+version = "1.0.0"
+path = "gates/planning.md"
+sha256 = "6f4bd75070f4a410ee910057c748b82fe168a7b10084085aa7377d5a21d7c882"
+aliases = ["planning", "plan", "plan-review", "work-decomposition"]
+
+[[references]]
+id = "technology/python"
+category = "technology"
+version = "1.0.0"
+path = "technologies/python.md"
+sha256 = "f1d083630eba96be47a389771e76e6c806dad72fed2cfde026abf5786dac2356"
+aliases = ["python", "py"]
+manifest_names = [
+  "pyproject.toml",
+  "requirements.txt",
+  "setup.cfg",
+  "setup.py",
+  "tox.ini",
+  "pdm.lock",
+  "poetry.lock",
+]
+manifest_suffixes = []
+manifest_content_markers = ["[tool.poetry]", "[project]", "pytest", "setuptools"]
+extensions = [".py", ".pyi"]
+path_markers = []
+build_markers = ["python", "pytest", "pip", "poetry"]
+compatible_toolchains = ["python"]
+default_toolchain = "python"
+
+[[references]]
+id = "technology/rust"
+category = "technology"
+version = "1.0.0"
+path = "technologies/rust.md"
+sha256 = "a1c24363fff79ca70114c8a9f91f82fb4b1e62194f30ace6bc39c07bfed4e1c8"
+aliases = ["rust", "rs"]
+manifest_names = ["cargo.toml", "cargo.lock", "rust-toolchain.toml"]
+manifest_suffixes = []
+manifest_content_markers = ["[package]", "[workspace]"]
+extensions = [".rs"]
+path_markers = []
+build_markers = ["cargo", "rustc"]
+compatible_toolchains = ["rust"]
+default_toolchain = "rust"
+
+[[references]]
+id = "technology/cpp"
+category = "technology"
+version = "1.0.0"
+path = "technologies/cpp.md"
+sha256 = "a0d05c871e374da760c908657a312dc1ed0278cf78361e762e1a4ff655ed5f63"
+aliases = ["cpp", "c++", "c"]
+manifest_names = ["cmakelists.txt", "cmakepresets.json", "meson.build", "makefile"]
+manifest_suffixes = []
+manifest_content_markers = ["project(", "add_executable(", "add_library("]
+extensions = [".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"]
+path_markers = []
+build_markers = ["cmake", "ctest", "msbuild", "clang", "gcc", "g++"]
+compatible_toolchains = ["cpp"]
+default_toolchain = "cpp"
+
+[[references]]
+id = "technology/dotnet"
+category = "technology"
+version = "1.0.0"
+path = "technologies/dotnet.md"
+sha256 = "757e91a4e1f78908691b4c8861157a98a8648afd6a13eb1a4c3767b56d6970aa"
+aliases = ["dotnet", ".net", "csharp", "c#"]
+manifest_names = ["global.json", "directory.build.props", "directory.packages.props"]
+manifest_suffixes = [".sln", ".csproj", ".fsproj", ".vbproj"]
+manifest_content_markers = ["<targetframework", "<project sdk="]
+extensions = [".cs", ".fs", ".vb"]
+path_markers = []
+build_markers = ["dotnet", "msbuild"]
+compatible_toolchains = ["dotnet"]
+default_toolchain = "dotnet"
+
+[[references]]
+id = "technology/powershell"
+category = "technology"
+version = "1.0.0"
+path = "technologies/powershell.md"
+sha256 = "7503334329d88f36fa3b9d8b32f21001e5e4bffab1d9a4936aeae83182c5c291"
+aliases = ["powershell", "pwsh", "windows-powershell"]
+manifest_names = ["psscriptanalyzersettings.psd1"]
+manifest_suffixes = [".psd1", ".psm1"]
+manifest_content_markers = ["rootmodule", "moduleversion"]
+extensions = [".ps1", ".psm1", ".psd1"]
+path_markers = []
+build_markers = ["powershell", "pwsh", "pester"]
+compatible_toolchains = ["powershell"]
+default_toolchain = "powershell"
+
+[[references]]
+id = "technology/electron"
+category = "technology"
+version = "1.0.0"
+path = "technologies/electron.md"
+sha256 = "524f74726d7336b4b1301f34d6ef87c288775de7a6b1d9e2e914bdb9827649f8"
+aliases = ["electron"]
+manifest_names = ["package.json"]
+manifest_suffixes = []
+manifest_content_markers = ["\"electron\"", "electron-builder", "electron-forge"]
+manifest_requires_content = true
+extensions = []
+path_markers = ["/electron/", "/preload/", "electron-main"]
+build_markers = ["electron", "electron-builder", "electron-forge"]
+compatible_toolchains = ["node"]
+default_toolchain = "node"
+
+[[references]]
+id = "technology/embedded-devices"
+category = "technology"
+version = "1.0.0"
+path = "technologies/embedded-devices.md"
+sha256 = "3f8d838b3d367a46e2efe95014d3447766b8af968f9ccec1f0f4c8471b278bba"
+aliases = ["embedded-devices", "embedded", "firmware", "device"]
+manifest_names = ["platformio.ini", "west.yml", "module.yml"]
+manifest_suffixes = [".ino"]
+manifest_content_markers = ["[env:", "zephyr", "firmware"]
+extensions = [".ino"]
+path_markers = ["/firmware/", "/embedded/", "/drivers/", "/device/"]
+build_markers = ["platformio", "west", "zephyr", "firmware"]
+compatible_toolchains = ["cpp", "rust"]
+default_toolchain = "cpp"
+
+[[references]]
+id = "technology/local-data"
+category = "technology"
+version = "1.0.0"
+path = "technologies/local-data.md"
+sha256 = "08cc96fb086989e5c32360a775278654c0c12e010a6f939af3c7a9e060d467db"
+aliases = ["local-data", "sqlite", "persistence"]
+manifest_names = []
+manifest_suffixes = []
+manifest_content_markers = ["sqlite", "journal_mode", "schema_version"]
+extensions = [".sql"]
+path_markers = ["/migrations/", "/database/", "/persistence/"]
+build_markers = ["sqlite", "migration", "database"]
+compatible_toolchains = ["python", "rust", "cpp", "dotnet", "powershell", "node"]
+default_toolchain = "python"
+
+[[references]]
+id = "technology/desktop-ui"
+category = "technology"
+version = "1.0.0"
+path = "technologies/desktop-ui.md"
+sha256 = "f9f00cb6e938008c64a6108d82043355624be6f76389d4d73a66a885f95087d6"
+aliases = ["desktop-ui", "ui", "wpf", "winforms"]
+manifest_names = []
+manifest_suffixes = []
+manifest_content_markers = ["<window", "<usercontrol", "accessibility"]
+extensions = [".xaml", ".axaml", ".ui"]
+path_markers = ["/views/", "/desktop-ui/"]
+build_markers = ["wpf", "winforms", "desktop-ui"]
+compatible_toolchains = ["dotnet", "node", "powershell", "cpp"]
+default_toolchain = "dotnet"
+
+[[references]]
+id = "toolchain/python"
+category = "toolchain"
+version = "1.0.0"
+path = "toolchains/python.toml"
+sha256 = "f9473bea92bfb7c177a73850d0afb7e861f00b3403bc07f606248ccc93c26b5b"
+aliases = ["python", "pip", "pytest"]
+
+[[references]]
+id = "toolchain/rust"
+category = "toolchain"
+version = "1.0.0"
+path = "toolchains/rust.toml"
+sha256 = "b80af56e4db9fc5ccb82217a540be2cea365eb02f522c35bec3300f9d9562587"
+aliases = ["rust", "cargo"]
+
+[[references]]
+id = "toolchain/cpp"
+category = "toolchain"
+version = "1.0.0"
+path = "toolchains/cpp.toml"
+sha256 = "f728eb147fc7c16dcfd827a39faf7e9696e1717efbb5909a6631f7500b032550"
+aliases = ["cpp", "cmake", "msvc", "clang", "gcc"]
+
+[[references]]
+id = "toolchain/dotnet"
+category = "toolchain"
+version = "1.0.0"
+path = "toolchains/dotnet.toml"
+sha256 = "b006d6a5233bc6c4bee8e9b7895cc8330a38351803934c93c847cccc6ed72ceb"
+aliases = ["dotnet", "msbuild"]
+
+[[references]]
+id = "toolchain/powershell"
+category = "toolchain"
+version = "1.0.0"
+path = "toolchains/powershell.toml"
+sha256 = "42be8920456b6a7c2fd3a4518f0d790ce642d35f986533151f8d91b3ceda73be"
+aliases = ["powershell", "pwsh", "windows-powershell"]
+
+[[references]]
+id = "toolchain/node"
+category = "toolchain"
+version = "1.0.0"
+path = "toolchains/node.toml"
+sha256 = "7680e9a0fe6f5ee138c1840bc7c6ee7dd56d8e489dbcbf1f91698f5b0eda0c2a"
+aliases = ["node", "npm", "pnpm", "yarn"]

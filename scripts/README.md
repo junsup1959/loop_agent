@@ -6,7 +6,9 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 
 | File | Responsibility |
 |---|---|
-| `init_agent_team.py` | Idempotent post-Serena team initialization, MCP URL refresh, and non-mutating verification |
+| `agent_team_layout.py` | Canonical root-source versus generated-bundle path discovery |
+| `build_agent_team_bundle.py` | Guarded deterministic temporary bundle materialization and parity checks |
+| `init_agent_team.py` | Idempotent team initialization, MCP dependency management, and non-mutating verification |
 | `project_agents.py` | Random seat initialization, role/profile validation, Codex agent compilation, and seat-to-skill resolution |
 | `project_skills.py` | Project-local expertise catalog validation, synchronization, and role eligibility |
 | `agent_team_queue.py` | SQLite durable message queue |
@@ -17,14 +19,43 @@ This directory provides the project-local agent registry, expertise resolver, SQ
 | `serena_project_knowledge.py` | Serena knowledge-state, evidence, and PL acknowledgement helper |
 | `message_echo_hook.sh` | Human-only echo after a message commit |
 
+## Canonical Source and Generated Bundle
+
+Repository-root `scripts/`, `agents/`, `skills/`, and `profile/` are the editable Agent-Team source. The existing architecture remains authoritative; this boundary supports its detailed worktree/runtime extension and does not create another orchestrator or workflow engine.
+
+`output/agent-team-codex-native/` is a generated delivery artifact. Do not hand-edit it after cutover. Root `.codex/skills/` is frozen legacy content, while `.agent-team/` is mutable runtime state; neither is a bundle source.
+
+Materialize and verify only an explicitly selected disposable destination during development:
+
+```powershell
+python .\scripts\build_agent_team_bundle.py `
+  --materialize `
+  --destination C:\temp\agent-team-bundle
+
+python .\scripts\build_agent_team_bundle.py `
+  --check `
+  --destination C:\temp\agent-team-bundle
+```
+
+The builder rejects unsafe or unowned destinations, preserves unknown files, removes only paths declared by its previous generated manifest, and keeps a stable byte/hash inventory. The real output bundle is materialized only by the release phase.
+
 ## First Installation and Repair
 
-The canonical delivery bundle under `output/agent-team-codex-native/` has no bootstrap skill. A human runs two batch files from a normal terminal outside Codex:
+Install the MCP runtime dependencies first, then initialize the team from a normal terminal. Sequential Thinking is installed globally because Codex loads it from npm's global module directory; Serena remains the installed `serena` CLI.
 
-1. `scripts/install_mcp_dependencies.bat` installs or verifies the Serena CLI and the pinned project-local Sequential Thinking package;
-2. `scripts/setup_agent_team.bat` initializes the team, creates or repairs `.serena/project.yml`, indexes and health-checks source analysis, initializes Serena memories, starts one shared loopback Streamable HTTP service, configures both MCP entries, and strictly checks them.
+```powershell
+python .\scripts\init_agent_team.py --install-mcp-dependencies
+python .\scripts\init_agent_team.py
+```
 
-The setup batch does not provision a missing MCP dependency. `init_agent_team.py` exposes separated `--install-mcp-dependencies`, `--check-mcp-dependencies`, and `--configure-mcp` operations. Its ordinary core initialization verifies Python dependencies, synchronizes all project-local skills and agents, generates `.codex/config.toml`, and initializes `.agent-team/state/agent-team.db`; it does not run `serena init` or `serena config edit`.
+MCP-only checks are deliberately focused: they validate the requested MCP's config and executable without requiring the team database, skill mirror, or a separate Serena HTTP service.
+
+```powershell
+python .\scripts\init_agent_team.py `
+  --check-mcp serena `
+  --check-mcp sequentialthinking `
+  --json
+```
 
 Repeated execution is safe and preserves existing seat identities.
 
@@ -46,18 +77,20 @@ python .\scripts\init_agent_team.py --refresh-mcp-config
 
 ## Project MCP Configuration
 
-The initializer writes only a managed project-local `.codex/config.toml` file. It configures:
+The initializer writes only a managed project-local `.codex/config.toml` file. Its MCP sections follow `sample_config.toml` semantics with project-local paths:
 
-- `serena`, one shared `streamable-http` endpoint at `http://127.0.0.1:<persisted-port>/mcp` read from `.agent-team/state/serena-service.json`;
-- `sequentialthinking`, started by Node from `.agent-team/mcp/node_modules/`;
+- `serena`, started directly over stdio with `serena start-mcp-server --project-from-cwd`;
+- `sequentialthinking`, started by Node from npm's global module directory;
 - eight custom seat agents auto-discovered from `.codex/agents/`;
 - `agents.max_threads = 8` and `agents.max_depth = 1`.
 
-The Serena service manager selects a free loopback port before configuration generation; port `0` is never written to Codex configuration. A spawned role agent connects to that shared endpoint and never starts its own Serena process. The listener is local to one active project and must not be reused for a different project.
+`--check-mcp-dependencies` verifies both executable dependencies without changing configuration. `--refresh-mcp-config` regenerates the managed MCP configuration after a path or configuration repair.
 
 All roles may use targeted Serena semantic exploration and only the named project-memory references selected for their activation. Tool availability does not grant role authority. The PL alone publishes, refreshes, renames, or deletes shared Serena project memories; other roles submit evidence-backed proposals through SQLite.
 
-The former `mcp-package/` directory is not used. Sequential Thinking is installed by the initializer with the pinned npm package version and checked before Codex configuration is accepted.
+When an explicit Serena tool allowlist is emitted, it must include `initial_instructions`; otherwise coding activations cannot satisfy the required Serena startup contract.
+
+The former `mcp-package/` directory is not used. Sequential Thinking is pinned and managed by global npm so the installer, generated config, and MCP-only check all resolve the same package path.
 
 ## Project Agent Seats
 

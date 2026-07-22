@@ -1,6 +1,0 @@
-interface:
-  display_name: "Design Desktop UI"
-  short_description: "Specify testable desktop interactions"
-  default_prompt: "Use $design-desktop-ui to specify the current desktop interaction and UI states."
-policy:
-  allow_implicit_invocation: false

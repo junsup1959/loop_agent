@@ -1,0 +1,217 @@
+[workflow]
+id = "delivery-v4"
+version = "4.0.0"
+schema_version = 4
+initial_state = "pm_intake"
+terminal_states = ["completed", "blocked", "quarantined"]
+authoritative_contract_format = "json"
+packet_template = "agents/templates/activation-packet.md.tmpl"
+contract_budget_formula = "min(role_packet_limit * 0.25, 12000)"
+contract_budget_ratio = 0.25
+contract_budget_ceiling_chars = 12000
+one_logical_capability_per_activation = true
+
+[[states]]
+id = "pm_intake"
+kind = "active"
+
+[[states]]
+id = "pl_assignment"
+kind = "active"
+
+[[states]]
+id = "dev_implementation"
+kind = "active"
+
+[[states]]
+id = "dev_rework"
+kind = "active"
+
+[[states]]
+id = "ta_review"
+kind = "active"
+
+[[states]]
+id = "pl_merge"
+kind = "active"
+
+[[states]]
+id = "qa_validation"
+kind = "active"
+
+[[states]]
+id = "build_validation"
+kind = "active"
+
+[[states]]
+id = "pm_acceptance"
+kind = "active"
+
+[[states]]
+id = "pl_rework"
+kind = "active"
+
+[[states]]
+id = "completed"
+kind = "terminal"
+
+[[states]]
+id = "blocked"
+kind = "terminal"
+
+[[states]]
+id = "quarantined"
+kind = "terminal"
+
+[[transitions]]
+id = "pm_intake_goal"
+from_state = "pm_intake"
+to_state = "pl_assignment"
+capabilities = ["pm"]
+result_kinds = ["goal_defined", "need_more_context", "blocked"]
+failure_state = "blocked"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "durable-evidence-routing", "mcp-required-no-fallback", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = []
+exact_oid_required = false
+workspace_kind = "none"
+
+[[transitions]]
+id = "pl_assign_implementation"
+from_state = "pl_assignment"
+to_state = "dev_implementation"
+capabilities = ["pl"]
+result_kinds = ["work_assigned", "need_more_context", "blocked"]
+failure_state = "blocked"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "durable-evidence-routing", "pl-serena-onboarding", "mcp-required-no-fallback", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = ["serena-project-onboarding", "sequential-planning"]
+serena_onboarding = "when_project_guidance_required"
+developer_consumption_receipt_required = true
+exact_oid_required = true
+workspace_kind = "control"
+
+[[transitions]]
+id = "dev_submit_revision"
+from_state = "dev_implementation"
+to_state = "ta_review"
+capabilities = ["developer"]
+result_kinds = ["revision_submitted", "need_more_context", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "bounded-context-request", "untrusted-evidence", "developer-worktree-isolation", "pl-serena-onboarding", "mcp-required-no-fallback", "mcp-usage-receipts", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = ["serena-coding-start"]
+serena_consumption_receipt_required = true
+exact_oid_required = true
+workspace_kind = "developer-worktree"
+
+[[transitions]]
+id = "dev_submit_rework"
+from_state = "dev_rework"
+to_state = "ta_review"
+capabilities = ["developer"]
+result_kinds = ["revision_submitted", "need_more_context", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "bounded-context-request", "developer-worktree-isolation", "preserve-oid-rework", "pl-serena-onboarding", "mcp-required-no-fallback", "mcp-usage-receipts", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = ["serena-coding-start"]
+serena_consumption_receipt_required = true
+exact_oid_required = true
+workspace_kind = "developer-worktree"
+
+[[transitions]]
+id = "ta_review_exact_oid"
+from_state = "ta_review"
+to_state = "pl_merge"
+capabilities = ["ta"]
+result_kinds = ["approved", "needs_rework", "need_more_context", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "exact-oid-executable-review", "no-self-approval", "mcp-required-no-fallback", "mcp-usage-receipts", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = ["serena-semantic-review"]
+exact_oid_required = true
+workspace_kind = "detached-review-sandbox"
+
+[[transitions]]
+id = "pl_merge_approved_oid"
+from_state = "pl_merge"
+to_state = "qa_validation"
+capabilities = ["pl"]
+result_kinds = ["merged", "merge_conflict", "broken_integration", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "pl-approved-oid-merge", "preserve-oid-rework", "mcp-required-no-fallback", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = []
+exact_oid_required = true
+workspace_kind = "integration-worktree"
+
+[[transitions]]
+id = "qa_validate_integration"
+from_state = "qa_validation"
+to_state = "build_validation"
+capabilities = ["qa_sdet"]
+result_kinds = ["approved", "needs_rework", "need_more_context", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "exact-oid-executable-review", "preserve-oid-rework", "mcp-required-no-fallback", "mcp-usage-receipts", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = ["serena-semantic-review"]
+exact_oid_required = true
+workspace_kind = "detached-review-sandbox"
+
+[[transitions]]
+id = "build_validate_integration"
+from_state = "build_validation"
+to_state = "pm_acceptance"
+capabilities = ["build_release"]
+result_kinds = ["approved", "needs_rework", "need_more_context", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "exact-oid-executable-review", "preserve-oid-rework", "mcp-required-no-fallback", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = []
+exact_oid_required = true
+workspace_kind = "detached-review-sandbox"
+
+[[transitions]]
+id = "pm_accept_integration"
+from_state = "pm_acceptance"
+to_state = "completed"
+capabilities = ["pm"]
+result_kinds = ["approved", "needs_rework", "need_more_context", "blocked"]
+failure_state = "pl_rework"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "durable-evidence-routing", "no-self-approval", "mcp-required-no-fallback", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = []
+exact_oid_required = true
+workspace_kind = "detached-review-sandbox"
+
+[[transitions]]
+id = "pl_issue_rework"
+from_state = "pl_rework"
+to_state = "dev_rework"
+capabilities = ["pl"]
+result_kinds = ["work_assigned", "need_more_context", "blocked"]
+failure_state = "blocked"
+clause_ids = ["activation-bounded-scope", "active-capability-authority", "preserve-oid-rework", "pl-serena-onboarding", "mcp-required-no-fallback", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = ["serena-project-onboarding", "sequential-rework"]
+serena_onboarding = "when_project_guidance_required"
+developer_consumption_receipt_required = true
+exact_oid_required = true
+workspace_kind = "control"
+
+[[transitions]]
+id = "elastic_execute_bounded_task"
+from_states = ["pl_assignment", "dev_implementation", "dev_rework", "ta_review", "pl_merge", "qa_validation", "build_validation", "pm_acceptance", "pl_rework"]
+state_effect = "none"
+capabilities = ["worker", "advisory"]
+result_kinds = ["evidence_ready", "advice_ready", "need_more_context", "blocked"]
+failure_state = "quarantined"
+clause_ids = ["activation-bounded-scope", "bounded-context-request", "untrusted-evidence", "elastic-singleton-boundary", "mcp-required-no-fallback", "mcp-usage-receipts", "single-profile-lifecycle", "schema-result-only"]
+mcp_availability_binding_ids = ["required-mcp-health"]
+mcp_required_use_binding_ids = []
+exact_oid_required = true
+workspace_kind = "contract-selected"
+max_active_workers_per_goal_run = 1
+nested_spawn_allowed = false
+approval_authorities = []
+merge_control = false

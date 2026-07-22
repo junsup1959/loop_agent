@@ -1,0 +1,57 @@
+[runtime]
+version = 2
+architecture = "existing-agent-team"
+scope = "worktree-execution-detail"
+topology_id = "six-slot-v1"
+state_database = "state/agent-team.db"
+repository_root = "repositories"
+workspace_root = "workspaces"
+activation_root = "activations"
+artifact_root = "artifacts"
+
+[path_authority]
+require_external_runtime = true
+require_disjoint_source_runtime = true
+require_runtime_outside_target = true
+reject_path_escape = true
+wsl_mount_root = "/mnt"
+
+[sqlite]
+schema_version = 4
+journal_mode = "WAL"
+synchronous = "NORMAL"
+foreign_keys = true
+busy_timeout_ms = 5000
+ownership_transaction = "BEGIN IMMEDIATE"
+destructive_migration_requires_backup = true
+
+[workspace]
+one_active_writer_per_branch = true
+one_active_writer_per_worktree = true
+layout = "workspaces/<goal_id>/<run_id>/<lease_id>"
+user_checkout_writable = false
+managed_repository_writable_by_agents = false
+developer_writable_roots = ["worktree"]
+
+[review]
+exact_oid_required = true
+executable_sandbox = true
+authoritative_refs_writable = false
+source_read_only = true
+ephemeral_writable_roots = ["build", "test", "cache", "temp", "install"]
+destroy_on_completion = true
+clean_source_required_for_gate = true
+
+[runner]
+revalidate_v4_binding_before_backend = true
+revalidate_contract_packet_profile_context_digests = true
+zero_backend_calls_on_preflight_failure = true
+single_active_capability_per_slot = true
+physical_seat_grants_authority = false
+
+[service_identities]
+integration_controller = "service:integration-controller"
+promotion_controller = "service:promotion-controller"
+recovery_reconciler = "service:recovery-reconciler"
+migration_controller = "service:migration-controller"
+llm_seats_consumed = 0
