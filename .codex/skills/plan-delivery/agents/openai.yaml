@@ -1,6 +1,0 @@
-interface:
-  display_name: "Plan Delivery"
-  short_description: "Map milestones, dependencies, and risks"
-  default_prompt: "Use $plan-delivery to build an outcome-based delivery plan for the current scope."
-policy:
-  allow_implicit_invocation: false

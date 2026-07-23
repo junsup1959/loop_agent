@@ -1,8 +1,0 @@
-[toolchain]
-id = "node"
-version = "1.0.0"
-technology_ids = ["electron", "desktop-ui", "local-data"]
-manifest_names = ["package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock"]
-executables = ["node", "npm"]
-version_evidence = ["node --version", "package manager version"]
-validation_families = ["lint", "unit", "integration", "package", "offline-startup"]

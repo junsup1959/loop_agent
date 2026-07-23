@@ -1,6 +1,0 @@
-interface:
-  display_name: "Coordinate Task DAG"
-  short_description: "Build bounded multi-agent task graphs"
-  default_prompt: "Use $coordinate-task-dag to decompose the current work into an executable task DAG."
-policy:
-  allow_implicit_invocation: false

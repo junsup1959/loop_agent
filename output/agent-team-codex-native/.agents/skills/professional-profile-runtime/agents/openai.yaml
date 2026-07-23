@@ -1,6 +1,0 @@
-interface:
-  display_name: "Professional Profile Runtime"
-  short_description: "Load pinned external professional context"
-  default_prompt: "Use $professional-profile-runtime to load and apply the activation-pinned compiled professional profile."
-policy:
-  allow_implicit_invocation: false

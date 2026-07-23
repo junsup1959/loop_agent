@@ -1,8 +1,0 @@
-[toolchain]
-id = "cpp"
-version = "1.0.0"
-technology_ids = ["cpp", "embedded-devices", "local-data"]
-manifest_names = ["CMakeLists.txt", "CMakePresets.json", "meson.build", "Makefile"]
-executables = ["cmake", "ctest"]
-version_evidence = ["compiler version", "cmake --version"]
-validation_families = ["configure", "build", "unit", "integration", "sanitizer"]

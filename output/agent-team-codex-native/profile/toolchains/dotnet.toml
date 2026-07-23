@@ -1,8 +1,0 @@
-[toolchain]
-id = "dotnet"
-version = "1.0.0"
-technology_ids = ["dotnet", "desktop-ui", "local-data"]
-manifest_names = ["global.json", "Directory.Build.props", "Directory.Packages.props"]
-executables = ["dotnet", "msbuild"]
-version_evidence = ["dotnet --info", "MSBuild version"]
-validation_families = ["restore", "build", "unit", "integration", "package"]

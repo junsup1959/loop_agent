@@ -1,6 +1,0 @@
-interface:
-  display_name: "Engineer C++ Systems"
-  short_description: "Engineer safe native C++ systems"
-  default_prompt: "Use $engineer-cpp-systems to implement or review the current C++ systems task."
-policy:
-  allow_implicit_invocation: false

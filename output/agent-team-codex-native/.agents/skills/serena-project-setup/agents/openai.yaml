@@ -1,6 +1,0 @@
-interface:
-  display_name: "Serena Project Setup"
-  short_description: "Run PL-owned Serena onboarding and refresh"
-  default_prompt: "Use $serena-project-setup 2.0.0 as the PL capability to verify initial_instructions, refresh only slow-changing project knowledge when required, and persist the exact source-OID-pinned minimum memory snapshot before developer work."
-policy:
-  allow_implicit_invocation: false

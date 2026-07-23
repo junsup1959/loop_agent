@@ -1,6 +1,0 @@
-interface:
-  display_name: "Engineer Local Data"
-  short_description: "Protect SQLite and local file data"
-  default_prompt: "Use $engineer-local-data to implement or review the current local persistence task."
-policy:
-  allow_implicit_invocation: false

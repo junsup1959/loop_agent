@@ -1,3 +1,0 @@
-# Full Airflow runtime. This installs apache-airflow-task-sdk transitively.
-# Install with the matching official constraints file documented in README.md.
-apache-airflow==3.3.0
